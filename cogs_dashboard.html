@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forage Kitchen - Weekly COGS Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 20px 30px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #f8fafc; }
+  .header h1 span { color: #3b82f6; }
+  .header .meta { text-align: right; font-size: 13px; color: #94a3b8; }
+  .header .meta .period { font-size: 16px; color: #f8fafc; font-weight: 600; }
+  .header .meta .source { font-size: 11px; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; }
+
+  .container { max-width: 1500px; margin: 0 auto; padding: 20px; }
+
+  /* KPI Cards */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .kpi-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; color: #f8fafc; }
+  .kpi-card .sub { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+  .kpi-card .change { font-size: 14px; font-weight: 600; margin-top: 4px; }
+  .positive { color: #22c55e; }
+  .negative { color: #ef4444; }
+  .neutral { color: #94a3b8; }
+  .warning { color: #f59e0b; }
+
+  /* Section headers */
+  .section-header { font-size: 18px; font-weight: 600; color: #f8fafc; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
+
+  /* GM Status Grid */
+  .gm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .gm-card { background: #1e293b; border-radius: 10px; padding: 14px 16px; border: 1px solid #334155; }
+  .gm-card .store-name { font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+  .gm-card .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
+  .gm-card .check-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .check-done { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+  .check-missing { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+  .check-partial { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b44; }
+
+  /* Charts row */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Tables */
+  .store-table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+  .store-table th { background: #334155; padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 600; }
+  .store-table th.right, .store-table td.right { text-align: right; }
+  .store-table td { padding: 12px 16px; border-bottom: 1px solid #1e293b; font-size: 14px; }
+  .store-table tr:nth-child(even) { background: #1e293b; }
+  .store-table tr:nth-child(odd) { background: #172033; }
+  .store-table tr:hover { background: #253352; }
+  .store-table tr.total-row { background: #334155 !important; font-weight: 700; }
+  .store-table tr.total-row td { border-top: 2px solid #4a5568; }
+
+  /* Week tabs */
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn { padding: 8px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .tab-btn:hover { background: #253352; color: #f8fafc; }
+  .tab-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; font-weight: 700; }
+  .tab-btn .current { font-size: 10px; display: block; color: #93c5fd; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Vendor table */
+  .vendor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .vendor-card { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; }
+  .vendor-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .vendor-list { list-style: none; }
+  .vendor-list li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #253352; font-size: 13px; }
+  .vendor-list li .v-name { color: #e2e8f0; }
+  .vendor-list li .v-amt { color: #94a3b8; font-weight: 500; }
+
+  .refresh-notice { text-align: center; padding: 12px; color: #64748b; font-size: 12px; margin-top: 20px; }
+  .refresh-notice code { background: #334155; padding: 2px 8px; border-radius: 4px; color: #94a3b8; }
+
+  @media (max-width: 768px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .vendor-grid { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 10px; }
+    .header .meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Forage <span>Kitchen</span> &mdash; COGS Dashboard</h1>
+  <div class="meta">
+    <div class="period" id="periodLabel"></div>
+    <div id="dateRange"></div>
+    <div id="lastUpdated"></div>
+    <div class="source">Data: R365 Inventory + Invoices + Toast Sales</div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <!-- GM Sign-Off Status -->
+  <div class="section-header">GM Weekly Sign-Off Status</div>
+  <div class="gm-grid" id="gmGrid"></div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Weekly R365 COGS % vs Budget</h3>
+      <canvas id="cogsPctChart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>R365 Invoice Breakdown (Period to Date)</h3>
+      <canvas id="cogsBreakdownChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Store Scoreboard -->
+  <div class="section-header">Store Scoreboard &mdash; Period to Date</div>
+  <table class="store-table" id="storeTable"></table>
+
+  <!-- Weekly Detail Tabs -->
+  <div class="section-header">Weekly Detail</div>
+  <div class="tab-bar" id="weekTabBar"></div>
+  <div id="weekTabContents"></div>
+
+  <!-- Top Vendors -->
+  <div class="section-header">Top Vendors &mdash; Period to Date</div>
+  <div class="vendor-grid" id="vendorGrid"></div>
+
+  <div class="refresh-notice">
+    Run <code>python cogs_dashboard.py</code> to update &bull;
+    GMs: Inventory counts + invoice approval due by <strong>Wednesday 8am</strong> &bull;
+    Generated <span id="refreshTime"></span>
+  </div>
+</div>
+
+<script>
+const D = {"generated": "2026-02-23T09:02:56.478314", "fiscal_year": 2026, "period": 2, "period_start": "2026-01-28", "period_end": "2026-02-24", "today": "2026-02-23", "current_week_start": "2026-02-18", "current_week_end": "2026-02-24", "weeks": [{"week_num": 1, "start": "2026-01-28", "end": "2026-02-03", "is_current": false, "is_past": true, "stores": {"8001": {"name": "State Street", "net_sales": 20904.43, "purchases_food": 5339.83, "purchases_packaging": 812.53, "purchases_beverage": 436.27, "purchases_other": 0, "purchases_total": 6588.63, "credits": 0, "waste": 145.54, "net_purchases": 6588.63, "cogs_pct": 31.5, "has_stock_count": false, "stock_count_date": null, "invoices_total": 157, "invoices_approved": 157, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 3768.25}, {"name": "V. MARCHESE INC.", "amount": 2678.24}, {"name": "MADISON SOURDOUGH", "amount": 293.6}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [{"item": "DRY GOODS - BLACK RICE", "qty": 0.5, "uom": "BAG (25 LB)", "amount": 38.94}, {"item": "SAUCE- CASHEW DRESSING", "qty": 4.0, "uom": "Quart", "amount": 29.15}, {"item": "SAUCE- BALSAMIC MAPLE DRESSING", "qty": 3.0, "uom": "Quart", "amount": 16.25}, {"item": "DAIRY - BLUE CHEESE", "qty": 3.0, "uom": "1 LB", "amount": 13.68}, {"item": "PRODUCE - FENNEL - ANISE CELERY", "qty": 4.0, "uom": "1 LB", "amount": 12.29}, {"item": "DAIRY - FETA CHEESE", "qty": 4.0, "uom": "LB", "amount": 12.12}, {"item": "PREPPED FOOD- ROMAINE", "qty": 5.0, "uom": "1 LB", "amount": 7.92}, {"item": "PRODUCE - ARUGULA", "qty": 0.5, "uom": "2 LB", "amount": 5.68}, {"item": "SAUCE- RED WINE VINAIGRETTE", "qty": 3.0, "uom": "Quart", "amount": 5.66}, {"item": "PRODUCE - CARROTS", "qty": 5.0, "uom": "LB", "amount": 3.85}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 28924.09, "est_cogs_pct": 138.4}, "8002": {"name": "Hilldale", "net_sales": 24431.79, "purchases_food": 4651.66, "purchases_packaging": 515.86, "purchases_beverage": 295.37, "purchases_other": 0, "purchases_total": 5462.89, "credits": 44.74, "waste": 110.85, "net_purchases": 5418.15, "cogs_pct": 22.2, "has_stock_count": false, "stock_count_date": null, "invoices_total": 127, "invoices_approved": 127, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 3008.12}, {"name": "V. MARCHESE INC.", "amount": 1955.75}, {"name": "MADISON SOURDOUGH", "amount": 346.0}, {"name": "ROCK CHEESE", "amount": 238.16}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 144.15}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [{"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 4.2, "uom": "LB", "amount": 8.93}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 2.0, "uom": "LB", "amount": 8.89}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 1.8, "uom": "LB", "amount": 8.0}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 3.5, "uom": "LB", "amount": 7.36}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 1.5, "uom": "LB", "amount": 6.67}, {"item": "PREPPED FOOD - GREEN ONION", "qty": 1.2, "uom": "1 LB", "amount": 6.52}, {"item": "PRODUCE - CILANTRO", "qty": 11.0, "uom": "BUNCH", "amount": 6.14}, {"item": "PRODUCE - AVOCADOS HASS", "qty": 8.0, "uom": "Each", "amount": 5.22}, {"item": "PRODUCE - CILANTRO", "qty": 8.0, "uom": "BUNCH", "amount": 4.46}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 2.0, "uom": "LB", "amount": 4.2}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 23785.68, "est_cogs_pct": 97.4}, "8003": {"name": "Monona", "net_sales": 24803.64, "purchases_food": 5665.63, "purchases_packaging": 758.81, "purchases_beverage": 382.2, "purchases_other": 0, "purchases_total": 6806.64, "credits": 75.98, "waste": 0, "net_purchases": 6730.66, "cogs_pct": 27.1, "has_stock_count": true, "stock_count_date": "2026-01-28", "invoices_total": 110, "invoices_approved": 110, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 3550.44}, {"name": "V. MARCHESE INC.", "amount": 1967.73}, {"name": "ROCK CHEESE", "amount": 635.05}, {"name": "MADISON SOURDOUGH", "amount": 418.9}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 201.9}, {"name": "OSPREY FARMS", "amount": 146.0}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}], "waste_items": [], "inventory_begin": 8518.71, "inventory_end": 6708.14, "inventory_adjustment": -1810.57, "inv_cogs": 8541.23, "inv_cogs_pct": 34.4, "est_cogs": 29547.6, "est_cogs_pct": 119.1}, "8004": {"name": "Old Sauk", "net_sales": 26575.78, "purchases_food": 5139.43, "purchases_packaging": 490.35, "purchases_beverage": 363.65, "purchases_other": 0, "purchases_total": 5993.43, "credits": 36.5, "waste": 0, "net_purchases": 5956.93, "cogs_pct": 22.4, "has_stock_count": false, "stock_count_date": null, "invoices_total": 130, "invoices_approved": 130, "invoices_unapproved": 0, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 2961.14}, {"name": "US FOODS", "amount": 2656.04}, {"name": "ROCK CHEESE", "amount": 262.59}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 125.4}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 26150.92, "est_cogs_pct": 98.4}, "8005": {"name": "Champaign", "net_sales": 10647.82, "purchases_food": 1990.34, "purchases_packaging": 340.46, "purchases_beverage": 221.4, "purchases_other": 0, "purchases_total": 2552.2, "credits": 0, "waste": 781.56, "net_purchases": 2552.2, "cogs_pct": 24.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 75, "invoices_approved": 75, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 1607.33}, {"name": "WHAT CHEFS WANTS", "amount": 1232.74}], "waste_items": [{"item": "SAUCE- RANCH DRESSING (DAIRY)", "qty": 3200.0, "uom": "OZ-fl", "amount": 610.5}, {"item": "SAUCE- THAI BASIL SPRING 2024", "qty": 32.0, "uom": "BTL (32 FL OZ)", "amount": 157.57}, {"item": "PRODUCE - SPINACH", "qty": 0.5, "uom": "4 LB", "amount": 6.2}, {"item": "SAUCES- POKE DRESSING", "qty": 16.0, "uom": "OZ-fl", "amount": 3.67}, {"item": "SAUCE- TZATZIKI", "qty": 0.5, "uom": "BTL (32 FL OZ)", "amount": 2.53}, {"item": "PREPPED FOOD- MARINATED TUNA", "qty": 2.4, "uom": "OZ-wt", "amount": 1.01}, {"item": "PRODUCE - ARUGULA", "qty": 0.02, "uom": "LB", "amount": 0.08}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 11204.16, "est_cogs_pct": 105.2}, "8006": {"name": "Whitefish Bay", "net_sales": 24002.46, "purchases_food": 5943.76, "purchases_packaging": 638.98, "purchases_beverage": 430.67, "purchases_other": 0, "purchases_total": 7013.41, "credits": 39.6, "waste": 319.25, "net_purchases": 6973.81, "cogs_pct": 29.1, "has_stock_count": false, "stock_count_date": null, "invoices_total": 152, "invoices_approved": 152, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 3611.84}, {"name": "V. MARCHESE INC.", "amount": 3024.67}, {"name": "ROCK CHEESE", "amount": 281.03}, {"name": "Breadsmith", "amount": 226.0}], "waste_items": [{"item": "PREPPED FOOD- COOKED RICE", "qty": 44.0, "uom": "LB", "amount": 62.24}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 4.0, "uom": "Quart", "amount": 36.12}, {"item": "PREPPED FOOD- SOUTHWEST SALSA", "qty": 4.7, "uom": "LB", "amount": 19.58}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 7.0, "uom": "LB", "amount": 18.03}, {"item": "PREPPED FOOD- DICED RADISH", "qty": 3.44, "uom": "LB", "amount": 15.29}, {"item": "SAUCE- BALSAMIC MAPLE DRESSING", "qty": 2.5, "uom": "BTL (32 FL OZ)", "amount": 13.54}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 2.77, "uom": "LB", "amount": 11.99}, {"item": "PREPPED FOOD- COOKED QUINOA", "qty": 10.38, "uom": "LB", "amount": 11.71}, {"item": "PREPPED FOOD- PICKLED GINGER MAYO", "qty": 2.06, "uom": "Quart", "amount": 11.07}, {"item": "PREPPED FOOD- ROASTED TEMPEH", "qty": 2.29, "uom": "LB", "amount": 11.01}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 30615.03, "est_cogs_pct": 127.5}, "8007": {"name": "Sun Prairie", "net_sales": 25674.02, "purchases_food": 3754.58, "purchases_packaging": 525.94, "purchases_beverage": 330.2, "purchases_other": 0, "purchases_total": 4610.72, "credits": 0, "waste": 38.29, "net_purchases": 4610.72, "cogs_pct": 18.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 99, "invoices_approved": 99, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 2716.64}, {"name": "V. MARCHESE INC.", "amount": 1696.13}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 146.9}, {"name": "OSPREY FARMS", "amount": 102.0}, {"name": "FORAGE KOMBUCHA", "amount": 68.0}], "waste_items": [{"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 32.0, "uom": "OZ-wt", "amount": 7.04}, {"item": "SAUCE- TEMPEH SAUCE", "qty": 1.0, "uom": "Quart", "amount": 5.81}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 21.0, "uom": "OZ-wt", "amount": 4.62}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 14.0, "uom": "OZ-wt", "amount": 3.08}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 13.3, "uom": "OZ-wt", "amount": 3.01}, {"item": "PREPPED FOOD- PICKLED GINGER MAYO", "qty": 1.0, "uom": "Quart", "amount": 2.94}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 8.0, "uom": "OZ-wt", "amount": 1.76}, {"item": "PREPPED FOOD- LENTIL MEATBALLS", "qty": 20.0, "uom": "OZ-wt", "amount": 1.69}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 13.7, "uom": "OZ-wt", "amount": 1.66}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 9.5, "uom": "OZ-wt", "amount": 1.53}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 20241.06, "est_cogs_pct": 78.8}, "8008": {"name": "Pewaukee", "net_sales": 14612.15, "purchases_food": 3462.39, "purchases_packaging": 514.84, "purchases_beverage": 454.87, "purchases_other": 0, "purchases_total": 4432.1, "credits": 0, "waste": 0, "net_purchases": 4432.1, "cogs_pct": 30.3, "has_stock_count": false, "stock_count_date": null, "invoices_total": 109, "invoices_approved": 109, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 3004.94}, {"name": "V. MARCHESE INC.", "amount": 1869.05}, {"name": "Breadsmith", "amount": 136.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 19456.92, "est_cogs_pct": 133.2}, "8009": {"name": "MKE Public Market", "net_sales": 15549.37, "purchases_food": 4116.11, "purchases_packaging": 387.3, "purchases_beverage": 266.2, "purchases_other": 0, "purchases_total": 4769.61, "credits": 51.79, "waste": 442.65, "net_purchases": 4717.82, "cogs_pct": 30.3, "has_stock_count": false, "stock_count_date": null, "invoices_total": 127, "invoices_approved": 127, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 2223.28}, {"name": "V. MARCHESE INC.", "amount": 2168.94}, {"name": "ROCK CHEESE", "amount": 493.02}, {"name": "Breadsmith", "amount": 118.4}], "waste_items": [{"item": "DRY GOODS - BLACK RICE", "qty": 67.0, "uom": "1 LB", "amount": 208.69}, {"item": "DRY GOODS - BLACK RICE", "qty": 17.29, "uom": "1 LB", "amount": 53.77}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 10.9, "uom": "LB", "amount": 41.87}, {"item": "DRY GOODS - BLACK RICE", "qty": 10.1, "uom": "1 LB", "amount": 31.41}, {"item": "PREPPED FOOD- ROASTED BROCCOLI", "qty": 8.0, "uom": "LB", "amount": 26.51}, {"item": "MEAT - CHICKEN THIGHS BNLS/SKNLS", "qty": 13.0, "uom": "LB", "amount": 18.66}, {"item": "SAUCE- BALSAMIC MAPLE DRESSING", "qty": 2.0, "uom": "BTL (32 FL OZ)", "amount": 10.68}, {"item": "PREPPED FOOD- SOUTHWEST SALSA", "qty": 2.1, "uom": "LB", "amount": 9.2}, {"item": "DAIRY - EGGS COOKED/PEELED", "qty": 12.0, "uom": "Each", "amount": 5.52}, {"item": "SAUCE- BALSAMIC MAPLE DRESSING", "qty": 1.0, "uom": "Quart", "amount": 5.34}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 20711.23, "est_cogs_pct": 133.2}, "8010": {"name": "Brookfield", "net_sales": 0.0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 0.0, "est_cogs_pct": 0}}, "totals": {"net_sales": 187201.46, "purchases_food": 40063.73, "purchases_packaging": 4985.07, "purchases_beverage": 3180.83, "purchases_total": 48229.63, "credits": 248.61, "waste": 1838.14, "net_purchases": 47981.02, "cogs_pct": 25.6, "inventory_begin": 8518.71, "inventory_end": 6708.14, "inv_cogs": 8541.23, "inv_cogs_pct": 4.6, "est_cogs": 210636.69, "est_cogs_pct": 112.5}}, {"week_num": 2, "start": "2026-02-04", "end": "2026-02-10", "is_current": false, "is_past": true, "stores": {"8001": {"name": "State Street", "net_sales": 20940.77, "purchases_food": 4369.53, "purchases_packaging": 374.02, "purchases_beverage": 193.7, "purchases_other": 0, "purchases_total": 4937.25, "credits": 77.87, "waste": 42.48, "net_purchases": 4859.38, "cogs_pct": 23.2, "has_stock_count": false, "stock_count_date": null, "invoices_total": 96, "invoices_approved": 96, "invoices_unapproved": 0, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 1923.91}, {"name": "US FOODS", "amount": 1752.29}, {"name": "ROCK CHEESE", "amount": 422.04}, {"name": "MADISON SOURDOUGH", "amount": 293.6}, {"name": "UW PROVISION COMPANY", "amount": 283.2}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 77.4}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [{"item": "PRODUCE - CAULIFLOWER FLORETS", "qty": 3.0, "uom": "3 LB", "amount": 26.27}, {"item": "PRODUCE - CUCUMBERS SUPER SELECT", "qty": 12.0, "uom": "Each", "amount": 9.6}, {"item": "PREPPED FOOD- PULLED CHICKEN", "qty": 3.0, "uom": "LB", "amount": 6.61}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 21332.68, "est_cogs_pct": 101.9}, "8002": {"name": "Hilldale", "net_sales": 26856.05, "purchases_food": 6255.45, "purchases_packaging": 774.66, "purchases_beverage": 267.8, "purchases_other": 0, "purchases_total": 7297.91, "credits": 114.06, "waste": 162.64, "net_purchases": 7183.85, "cogs_pct": 26.7, "has_stock_count": false, "stock_count_date": null, "invoices_total": 160, "invoices_approved": 160, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 4026.99}, {"name": "V. MARCHESE INC.", "amount": 2765.55}, {"name": "MADISON SOURDOUGH", "amount": 346.0}, {"name": "ROCK CHEESE", "amount": 241.85}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 136.9}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [{"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 17.0, "uom": "LB", "amount": 70.05}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 2.5, "uom": "LB", "amount": 10.35}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 6.0, "uom": "1 QT (18 OZ)", "amount": 9.55}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 2.0, "uom": "LB", "amount": 8.66}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 3.5, "uom": "LB", "amount": 6.69}, {"item": "PRODUCE - SPINACH", "qty": 1.2, "uom": "LB", "amount": 5.03}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 6.0, "uom": "Each", "amount": 3.55}, {"item": "PRODUCE - CILANTRO", "qty": 6.0, "uom": "BUNCH", "amount": 3.42}, {"item": "PRODUCE - CILANTRO", "qty": 6.0, "uom": "BUNCH", "amount": 3.38}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 2.0, "uom": "1 QT (18 OZ)", "amount": 3.18}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 31537.1, "est_cogs_pct": 117.4}, "8003": {"name": "Monona", "net_sales": 22903.71, "purchases_food": 4585.61, "purchases_packaging": 666.25, "purchases_beverage": 523.3, "purchases_other": 0, "purchases_total": 5775.16, "credits": 40.46, "waste": 0, "net_purchases": 5734.7, "cogs_pct": 25.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 104, "invoices_approved": 104, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 2924.85}, {"name": "V. MARCHESE INC.", "amount": 2201.2}, {"name": "ROCK CHEESE", "amount": 269.5}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 201.9}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 90.72}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 25175.33, "est_cogs_pct": 109.9}, "8004": {"name": "Old Sauk", "net_sales": 25433.24, "purchases_food": 7310.36, "purchases_packaging": 967.65, "purchases_beverage": 478.2, "purchases_other": 0, "purchases_total": 8756.21, "credits": 0, "waste": 0, "net_purchases": 8756.21, "cogs_pct": 34.4, "has_stock_count": false, "stock_count_date": null, "invoices_total": 156, "invoices_approved": 156, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 4202.94}, {"name": "V. MARCHESE INC.", "amount": 3541.56}, {"name": "MADISON SOURDOUGH", "amount": 335.3}, {"name": "ROCK CHEESE", "amount": 276.89}, {"name": "UW PROVISION COMPANY", "amount": 214.8}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 133.15}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "OSPREY FARMS", "amount": 72.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 38439.76, "est_cogs_pct": 151.1}, "8005": {"name": "Champaign", "net_sales": 13118.27, "purchases_food": 4146.8, "purchases_packaging": 411.27, "purchases_beverage": 484.43, "purchases_other": 0, "purchases_total": 5042.5, "credits": 315.32, "waste": 0, "net_purchases": 4727.18, "cogs_pct": 36.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 120, "invoices_approved": 120, "invoices_unapproved": 0, "top_vendors": [{"name": "WHAT CHEFS WANTS", "amount": 2997.11}, {"name": "US FOODS", "amount": 2235.53}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 20752.32, "est_cogs_pct": 158.2}, "8006": {"name": "Whitefish Bay", "net_sales": 23665.55, "purchases_food": 5408.01, "purchases_packaging": 794.48, "purchases_beverage": 406.2, "purchases_other": 0, "purchases_total": 6608.69, "credits": 188.16, "waste": 575.95, "net_purchases": 6420.53, "cogs_pct": 27.1, "has_stock_count": false, "stock_count_date": null, "invoices_total": 125, "invoices_approved": 124, "invoices_unapproved": 1, "top_vendors": [{"name": "US FOODS", "amount": 3850.26}, {"name": "V. MARCHESE INC.", "amount": 2557.87}, {"name": "ROCK CHEESE", "amount": 323.38}, {"name": "Breadsmith", "amount": 191.2}], "waste_items": [{"item": "PREPPED FOOD- COOKED RICE", "qty": 52.3, "uom": "LB", "amount": 73.98}, {"item": "PREPPED FOOD- BUTTERNUT SQUASH SOUP 2025", "qty": 22.0, "uom": "Quart", "amount": 69.96}, {"item": "DRY GOODS - COCONUT MILK", "qty": 4.0, "uom": "CAN (96 OZ)", "amount": 60.32}, {"item": "DRY GOODS - BLACK RICE", "qty": 11.0, "uom": "1 LB", "amount": 34.26}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 3.03, "uom": "Quart", "amount": 27.36}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 6.04, "uom": "1 LB", "amount": 26.88}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 3306.0, "uom": "Gram", "amount": 19.53}, {"item": "PREPPED FOOD- PICKLED RED ONION", "qty": 9.35, "uom": "LB", "amount": 18.11}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 2.0, "uom": "Quart", "amount": 18.06}, {"item": "PRODUCE - SPRING MIX SALAD", "qty": 2.0, "uom": "3 LB Bag", "amount": 17.85}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 28186.13, "est_cogs_pct": 119.1}, "8007": {"name": "Sun Prairie", "net_sales": 24780.32, "purchases_food": 6545.44, "purchases_packaging": 377.75, "purchases_beverage": 688.95, "purchases_other": 0, "purchases_total": 7612.14, "credits": 0, "waste": 61.85, "net_purchases": 7612.14, "cogs_pct": 30.7, "has_stock_count": false, "stock_count_date": null, "invoices_total": 167, "invoices_approved": 167, "invoices_unapproved": 0, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 3406.04}, {"name": "US FOODS", "amount": 3282.02}, {"name": "ROCK CHEESE", "amount": 493.76}, {"name": "MADISON SOURDOUGH", "amount": 413.8}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 146.9}, {"name": "OSPREY FARMS", "amount": 102.0}, {"name": "FORAGE KOMBUCHA", "amount": 68.0}], "waste_items": [{"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 63.0, "uom": "OZ-wt", "amount": 7.2}, {"item": "PRODUCE - FENNEL - ANISE CELERY", "qty": 4.0, "uom": "Each", "amount": 5.68}, {"item": "PREPPED FOOD- CARROTS", "qty": 6.0, "uom": "LB", "amount": 5.15}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 39.8, "uom": "OZ-wt", "amount": 4.84}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 21.0, "uom": "OZ-wt", "amount": 4.8}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 27.0, "uom": "OZ-wt", "amount": 4.4}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 1.0, "uom": "LB", "amount": 3.66}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 2.0, "uom": "LB", "amount": 3.66}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 16.0, "uom": "OZ-wt", "amount": 3.62}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 14.3, "uom": "OZ-wt", "amount": 3.24}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 33417.29, "est_cogs_pct": 134.9}, "8008": {"name": "Pewaukee", "net_sales": 13879.68, "purchases_food": 3516.88, "purchases_packaging": 427.59, "purchases_beverage": 311.5, "purchases_other": 0, "purchases_total": 4255.97, "credits": 416.3, "waste": 19.55, "net_purchases": 3839.67, "cogs_pct": 27.7, "has_stock_count": false, "stock_count_date": null, "invoices_total": 99, "invoices_approved": 99, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 2444.49}, {"name": "V. MARCHESE INC.", "amount": 1723.72}, {"name": "ROCK CHEESE", "amount": 222.5}, {"name": "Breadsmith", "amount": 124.8}], "waste_items": [{"item": "PRODUCE - GREEN ONION", "qty": 1.5, "uom": "12 CT GRN Onion", "amount": 19.55}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 16856.15, "est_cogs_pct": 121.4}, "8009": {"name": "MKE Public Market", "net_sales": 15642.7, "purchases_food": 4127.18, "purchases_packaging": 530.81, "purchases_beverage": 241.9, "purchases_other": 0, "purchases_total": 4899.89, "credits": 0, "waste": 444.14, "net_purchases": 4899.89, "cogs_pct": 31.3, "has_stock_count": false, "stock_count_date": null, "invoices_total": 121, "invoices_approved": 121, "invoices_unapproved": 0, "top_vendors": [{"name": "US FOODS", "amount": 2908.83}, {"name": "V. MARCHESE INC.", "amount": 2049.67}, {"name": "Breadsmith", "amount": 102.4}], "waste_items": [{"item": "DRY GOODS - BLACK RICE", "qty": 28.0, "uom": "1 LB", "amount": 87.21}, {"item": "DRY GOODS - BLACK RICE", "qty": 12.1, "uom": "1 LB", "amount": 37.63}, {"item": "DRY GOODS - BLACK RICE", "qty": 11.5, "uom": "1 LB", "amount": 35.77}, {"item": "DRY GOODS - WALNUT", "qty": 2.3, "uom": "1 LB", "amount": 28.75}, {"item": "PREPPED FOOD- ROASTED BROCCOLI", "qty": 6.6, "uom": "LB", "amount": 21.85}, {"item": "DRY GOODS - BLACK RICE", "qty": 6.1, "uom": "1 LB", "amount": 18.97}, {"item": "SAUCE- CASHEW DRESSING", "qty": 2.0, "uom": "Quart", "amount": 16.24}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 11.4, "uom": "LB", "amount": 16.19}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 6.0, "uom": "LB", "amount": 15.48}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 9.4, "uom": "LB", "amount": 13.35}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 21510.52, "est_cogs_pct": 137.5}, "8010": {"name": "Brookfield", "net_sales": 0.0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 0.0, "est_cogs_pct": 0}}, "totals": {"net_sales": 187220.29, "purchases_food": 46265.26, "purchases_packaging": 5324.48, "purchases_beverage": 3595.98, "purchases_total": 55185.72, "credits": 1152.17, "waste": 1306.61, "net_purchases": 54033.55, "cogs_pct": 28.9, "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 237207.28, "est_cogs_pct": 126.7}}, {"week_num": 3, "start": "2026-02-11", "end": "2026-02-17", "is_current": false, "is_past": true, "stores": {"8001": {"name": "State Street", "net_sales": 24801.92, "purchases_food": 6403.48, "purchases_packaging": 924.02, "purchases_beverage": 509.62, "purchases_other": 0, "purchases_total": 7837.12, "credits": 351.5, "waste": 136.1, "net_purchases": 7485.62, "cogs_pct": 30.2, "has_stock_count": false, "stock_count_date": null, "invoices_total": 153, "invoices_approved": 153, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 4570.75}, {"name": "V. MARCHESE INC.", "amount": 3023.1}, {"name": "GENERAL PARTS", "amount": 1622.96}, {"name": "MADISON SOURDOUGH", "amount": 293.6}, {"name": "ROCK CHEESE", "amount": 282.14}, {"name": "UW PROVISION COMPANY", "amount": 214.8}, {"name": "FORAGE KOMBUCHA", "amount": 100.0}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 86.4}, {"name": "OSPREY FARMS", "amount": 12.0}], "waste_items": [{"item": "PRODUCE - CAULIFLOWER FLORETS", "qty": 5.0, "uom": "3 LB Bag", "amount": 51.23}, {"item": "DRY GOODS - COCONUT MILK", "qty": 2.0, "uom": "CAN (96 OZ)", "amount": 30.16}, {"item": "MEAT - TEMPEH", "qty": 6.0, "uom": "1 LB", "amount": 25.92}, {"item": "PREPPED FOOD- ROASTED SWEET POTATOES", "qty": 20.0, "uom": "LB", "amount": 18.84}, {"item": "PRODUCE - BRUSSELS SPROUTS", "qty": 5.0, "uom": "1 LB", "amount": 9.95}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 32861.87, "est_cogs_pct": 132.5}, "8002": {"name": "Hilldale", "net_sales": 25930.44, "purchases_food": 7250.06, "purchases_packaging": 961.13, "purchases_beverage": 376.67, "purchases_other": 0, "purchases_total": 8587.86, "credits": 434.96, "waste": 64.31, "net_purchases": 8152.9, "cogs_pct": 31.4, "has_stock_count": false, "stock_count_date": null, "invoices_total": 165, "invoices_approved": 165, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 5160.59}, {"name": "V. MARCHESE INC.", "amount": 2744.3}, {"name": "ROCK CHEESE", "amount": 370.24}, {"name": "MADISON SOURDOUGH", "amount": 346.0}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 144.65}, {"name": "FORAGE KOMBUCHA", "amount": 132.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 90.72}, {"name": "OSPREY FARMS", "amount": 12.0}], "waste_items": [{"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 2.0, "uom": "LB", "amount": 8.34}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 9.0, "uom": "Each", "amount": 5.4}, {"item": "PRODUCE - CILANTRO", "qty": 9.0, "uom": "BUNCH", "amount": 5.29}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 2.0, "uom": "LB", "amount": 4.36}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 1.75, "uom": "LB", "amount": 3.82}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 6.0, "uom": "Each", "amount": 3.6}, {"item": "PRODUCE - AVOCADOS HASS", "qty": 5.0, "uom": "Each", "amount": 3.26}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 1.2, "uom": "LB", "amount": 3.15}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 5.0, "uom": "Each", "amount": 3.0}, {"item": "PRODUCE - AVOCADOS HASS", "qty": 4.0, "uom": "Each", "amount": 2.61}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 35791.23, "est_cogs_pct": 138.0}, "8003": {"name": "Monona", "net_sales": 25310.29, "purchases_food": 6778.25, "purchases_packaging": 750.88, "purchases_beverage": 754.82, "purchases_other": 0, "purchases_total": 8283.95, "credits": 0, "waste": 0, "net_purchases": 8283.95, "cogs_pct": 32.7, "has_stock_count": false, "stock_count_date": null, "invoices_total": 157, "invoices_approved": 157, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 4265.51}, {"name": "V. MARCHESE INC.", "amount": 3299.33}, {"name": "MADISON SOURDOUGH", "amount": 418.9}, {"name": "ROCK CHEESE", "amount": 279.01}, {"name": "FORAGE KOMBUCHA", "amount": 180.0}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 162.15}, {"name": "OSPREY FARMS", "amount": 12.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 36366.54, "est_cogs_pct": 143.7}, "8004": {"name": "Old Sauk", "net_sales": 28997.97, "purchases_food": 5912.9, "purchases_packaging": 697.3, "purchases_beverage": 450.05, "purchases_other": 0, "purchases_total": 7060.25, "credits": 0, "waste": 0, "net_purchases": 7060.25, "cogs_pct": 24.3, "has_stock_count": false, "stock_count_date": null, "invoices_total": 144, "invoices_approved": 144, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 4470.36}, {"name": "V. MARCHESE INC.", "amount": 2979.61}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 134.65}, {"name": "FORAGE KOMBUCHA", "amount": 116.0}, {"name": "R.E. GOLDEN PRODUCE CO.", "amount": 44.96}, {"name": "OSPREY FARMS", "amount": 12.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 30994.5, "est_cogs_pct": 106.9}, "8005": {"name": "Champaign", "net_sales": 15101.03, "purchases_food": 2337.27, "purchases_packaging": 532.78, "purchases_beverage": 52.86, "purchases_other": 0, "purchases_total": 2922.91, "credits": 56.74, "waste": 0, "net_purchases": 2866.17, "cogs_pct": 19.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 69, "invoices_approved": 69, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 1725.49}, {"name": "WHAT CHEFS WANTS", "amount": 1340.92}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 12582.49, "est_cogs_pct": 83.3}, "8006": {"name": "Whitefish Bay", "net_sales": 27336.42, "purchases_food": 7252.95, "purchases_packaging": 815.13, "purchases_beverage": 573.85, "purchases_other": 0, "purchases_total": 8641.93, "credits": 0, "waste": 150.71, "net_purchases": 8641.93, "cogs_pct": 31.6, "has_stock_count": false, "stock_count_date": null, "invoices_total": 176, "invoices_approved": 174, "invoices_unapproved": 2, "top_vendors": [{"name": "US Foods Inc.", "amount": 5318.34}, {"name": "V. MARCHESE INC.", "amount": 3414.41}, {"name": "ROCK CHEESE", "amount": 343.25}, {"name": "Breadsmith", "amount": 246.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}], "waste_items": [{"item": "PREPPED FOOD- COOKED RICE", "qty": 17.35, "uom": "LB", "amount": 24.54}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 5.25, "uom": "1 LB", "amount": 23.38}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 10.01, "uom": "LB", "amount": 14.16}, {"item": "MEAT - 80/20 GROUND BEEF", "qty": 3.0, "uom": "LB", "amount": 13.36}, {"item": "PREPPED FOOD- SOUTHWEST SALSA", "qty": 2.71, "uom": "LB", "amount": 11.63}, {"item": "PREPPED FOOD- HUMMUS10.23", "qty": 3.35, "uom": "LB", "amount": 11.29}, {"item": "DAIRY - GREEK YOGURT", "qty": 2.0, "uom": "32 OZ", "amount": 10.57}, {"item": "PREPPED FOOD- ROASTED TEMPEH", "qty": 2.14, "uom": "LB", "amount": 10.29}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 1696.44, "uom": "Gram", "amount": 10.02}, {"item": "PREPPED FOOD- ROASTED TOFU", "qty": 1.32, "uom": "LB", "amount": 4.74}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 37938.07, "est_cogs_pct": 138.8}, "8007": {"name": "Sun Prairie", "net_sales": 27841.39, "purchases_food": 5936.02, "purchases_packaging": 830.28, "purchases_beverage": 843.92, "purchases_other": 0, "purchases_total": 7610.22, "credits": 0, "waste": 0, "net_purchases": 7610.22, "cogs_pct": 27.3, "has_stock_count": false, "stock_count_date": null, "invoices_total": 161, "invoices_approved": 161, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 4566.49}, {"name": "V. MARCHESE INC.", "amount": 2813.46}, {"name": "MADISON SOURDOUGH", "amount": 413.8}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 148.4}, {"name": "FORAGE KOMBUCHA", "amount": 148.0}, {"name": "OSPREY FARMS", "amount": 12.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 33408.87, "est_cogs_pct": 120.0}, "8008": {"name": "Pewaukee", "net_sales": 15938.03, "purchases_food": 3648.41, "purchases_packaging": 388.86, "purchases_beverage": 384.32, "purchases_other": 0, "purchases_total": 4421.59, "credits": 0, "waste": 224.41, "net_purchases": 4421.59, "cogs_pct": 27.7, "has_stock_count": false, "stock_count_date": null, "invoices_total": 109, "invoices_approved": 109, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 2560.62}, {"name": "V. MARCHESE INC.", "amount": 1855.0}, {"name": "ROCK CHEESE", "amount": 203.25}, {"name": "Breadsmith", "amount": 160.0}], "waste_items": [{"item": "DRY GOODS - BLACK RICE", "qty": 12.73, "uom": "1 LB", "amount": 39.65}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 4.0, "uom": "Quart", "amount": 36.23}, {"item": "PREPPED FOOD- SMOKED SALMON", "qty": 36.0, "uom": "OZ-wt", "amount": 34.02}, {"item": "DRY GOODS - BLACK RICE", "qty": 5.63, "uom": "1 LB", "amount": 17.54}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 11.33, "uom": "LB", "amount": 16.03}, {"item": "DRY GOODS - BLACK RICE", "qty": 4.63, "uom": "1 LB", "amount": 14.42}, {"item": "DRY GOODS- CASHEWS", "qty": 1.5, "uom": "1 LB", "amount": 12.58}, {"item": "SAUCE- TZATZIKI", "qty": 2.0, "uom": "Quart", "amount": 9.29}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 15.0, "uom": "Each", "amount": 8.06}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 15.0, "uom": "Each", "amount": 8.06}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 19410.78, "est_cogs_pct": 121.8}, "8009": {"name": "MKE Public Market", "net_sales": 21216.33, "purchases_food": 4794.66, "purchases_packaging": 597.72, "purchases_beverage": 266.6, "purchases_other": 0, "purchases_total": 5658.98, "credits": 0, "waste": 363.84, "net_purchases": 5658.98, "cogs_pct": 26.7, "has_stock_count": false, "stock_count_date": null, "invoices_total": 131, "invoices_approved": 131, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 2941.96}, {"name": "V. MARCHESE INC.", "amount": 2237.7}, {"name": "ROCK CHEESE", "amount": 388.51}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}, {"name": "Breadsmith", "amount": 136.0}], "waste_items": [{"item": "DRY GOODS - BLACK RICE", "qty": 42.2, "uom": "1 LB", "amount": 131.44}, {"item": "DRY GOODS - BLACK RICE", "qty": 11.0, "uom": "1 LB", "amount": 34.26}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 13.9, "uom": "LB", "amount": 32.21}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 7.5, "uom": "LB", "amount": 28.21}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 9.4, "uom": "LB", "amount": 26.53}, {"item": "PREPPED FOOD- MARINATED TUNA", "qty": 4.1, "uom": "LB", "amount": 20.8}, {"item": "PREPPED FOOD- ROASTED BROCCOLI", "qty": 4.2, "uom": "LB", "amount": 13.92}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 7.7, "uom": "LB", "amount": 10.93}, {"item": "PREPPED FOOD- BUTTERNUT SQUASH SOUP 2025", "qty": 96.0, "uom": "OZ-fl", "amount": 9.5}, {"item": "PREPPED FOOD- GUACAMOLE", "qty": 1.0, "uom": "Quart", "amount": 9.08}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 24842.92, "est_cogs_pct": 117.1}, "8010": {"name": "Brookfield", "net_sales": 0.0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 0.0, "est_cogs_pct": 0}}, "totals": {"net_sales": 212473.82, "purchases_food": 50314.0, "purchases_packaging": 6498.1, "purchases_beverage": 4212.71, "purchases_total": 61024.81, "credits": 843.2, "waste": 939.37, "net_purchases": 60181.61, "cogs_pct": 28.3, "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 264197.27, "est_cogs_pct": 124.3}}, {"week_num": 4, "start": "2026-02-18", "end": "2026-02-24", "is_current": true, "is_past": false, "stores": {"8001": {"name": "State Street", "net_sales": 16608.15, "purchases_food": 5778.76, "purchases_packaging": 306.84, "purchases_beverage": 121.23, "purchases_other": 0, "purchases_total": 6206.83, "credits": 0, "waste": 0, "net_purchases": 6206.83, "cogs_pct": 37.4, "has_stock_count": false, "stock_count_date": null, "invoices_total": 103, "invoices_approved": 103, "invoices_unapproved": 0, "top_vendors": [{"name": "US Foods Inc.", "amount": 4303.01}, {"name": "V. MARCHESE INC.", "amount": 1654.13}, {"name": "ROCK CHEESE", "amount": 578.16}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 27247.98, "est_cogs_pct": 164.1}, "8002": {"name": "Hilldale", "net_sales": 17573.34, "purchases_food": 4024.9, "purchases_packaging": 686.98, "purchases_beverage": 122.06, "purchases_other": 0, "purchases_total": 4833.94, "credits": 0, "waste": 66.96, "net_purchases": 4833.94, "cogs_pct": 27.5, "has_stock_count": false, "stock_count_date": null, "invoices_total": 94, "invoices_approved": 46, "invoices_unapproved": 48, "top_vendors": [{"name": "US Foods Inc.", "amount": 3221.96}, {"name": "V. MARCHESE INC.", "amount": 1617.35}, {"name": "ROCK CHEESE", "amount": 245.13}], "waste_items": [{"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 6.0, "uom": "LB", "amount": 25.24}, {"item": "DRY GOODS- SALAD OIL", "qty": 8.0, "uom": "LB", "amount": 8.34}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 1.7, "uom": "LB", "amount": 4.13}, {"item": "PRODUCE - CILANTRO", "qty": 5.0, "uom": "BUNCH", "amount": 3.02}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 1.0, "uom": "LB", "amount": 2.86}, {"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 1.0, "uom": "LB", "amount": 2.43}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 4.0, "uom": "Each", "amount": 2.42}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 4.0, "uom": "Each", "amount": 2.42}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 0.75, "uom": "LB", "amount": 2.14}, {"item": "PRODUCE - AVOCADOS HASS", "qty": 3.0, "uom": "Each", "amount": 1.96}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 21221.0, "est_cogs_pct": 120.8}, "8003": {"name": "Monona", "net_sales": 19045.79, "purchases_food": 5236.99, "purchases_packaging": 793.89, "purchases_beverage": 674.04, "purchases_other": 0, "purchases_total": 6704.92, "credits": 0, "waste": 0, "net_purchases": 6704.92, "cogs_pct": 35.2, "has_stock_count": false, "stock_count_date": null, "invoices_total": 134, "invoices_approved": 90, "invoices_unapproved": 44, "top_vendors": [{"name": "US Foods Inc.", "amount": 3852.22}, {"name": "V. MARCHESE INC.", "amount": 3090.19}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 29434.6, "est_cogs_pct": 154.5}, "8004": {"name": "Old Sauk", "net_sales": 18919.81, "purchases_food": 6734.24, "purchases_packaging": 711.64, "purchases_beverage": 505.23, "purchases_other": 0, "purchases_total": 7951.11, "credits": 0, "waste": 0, "net_purchases": 7951.11, "cogs_pct": 42.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 145, "invoices_approved": 82, "invoices_unapproved": 63, "top_vendors": [{"name": "US Foods Inc.", "amount": 4225.23}, {"name": "V. MARCHESE INC.", "amount": 3426.65}, {"name": "ROCK CHEESE", "amount": 539.75}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 34905.37, "est_cogs_pct": 184.5}, "8005": {"name": "Champaign", "net_sales": 10792.17, "purchases_food": 1923.05, "purchases_packaging": 104.03, "purchases_beverage": 131.0, "purchases_other": 0, "purchases_total": 2158.08, "credits": 0, "waste": 0, "net_purchases": 2158.08, "cogs_pct": 20.0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 58, "invoices_approved": 0, "invoices_unapproved": 58, "top_vendors": [{"name": "WHAT CHEFS WANTS", "amount": 1180.32}, {"name": "US Foods Inc.", "amount": 998.0}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 9473.97, "est_cogs_pct": 87.8}, "8006": {"name": "Whitefish Bay", "net_sales": 20438.49, "purchases_food": 3489.28, "purchases_packaging": 471.75, "purchases_beverage": 385.43, "purchases_other": 0, "purchases_total": 4346.46, "credits": 0, "waste": 0, "net_purchases": 4346.46, "cogs_pct": 21.3, "has_stock_count": false, "stock_count_date": null, "invoices_total": 91, "invoices_approved": 0, "invoices_unapproved": 91, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 2382.44}, {"name": "US Foods Inc.", "amount": 2159.06}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 19080.96, "est_cogs_pct": 93.4}, "8007": {"name": "Sun Prairie", "net_sales": 20120.44, "purchases_food": 5415.24, "purchases_packaging": 673.24, "purchases_beverage": 404.88, "purchases_other": 0, "purchases_total": 6493.36, "credits": 235.8, "waste": 0, "net_purchases": 6257.56, "cogs_pct": 31.1, "has_stock_count": false, "stock_count_date": null, "invoices_total": 121, "invoices_approved": 71, "invoices_unapproved": 50, "top_vendors": [{"name": "US Foods Inc.", "amount": 4157.45}, {"name": "V. MARCHESE INC.", "amount": 2053.8}, {"name": "ROCK CHEESE", "amount": 606.83}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 27470.69, "est_cogs_pct": 136.5}, "8008": {"name": "Pewaukee", "net_sales": 13285.84, "purchases_food": 3623.45, "purchases_packaging": 476.41, "purchases_beverage": 311.16, "purchases_other": 0, "purchases_total": 4411.02, "credits": 37.98, "waste": 0, "net_purchases": 4373.04, "cogs_pct": 32.9, "has_stock_count": false, "stock_count_date": null, "invoices_total": 88, "invoices_approved": 0, "invoices_unapproved": 88, "top_vendors": [{"name": "US Foods Inc.", "amount": 2830.31}, {"name": "V. MARCHESE INC.", "amount": 1762.04}], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 19197.65, "est_cogs_pct": 144.5}, "8009": {"name": "MKE Public Market", "net_sales": 13715.22, "purchases_food": 3667.94, "purchases_packaging": 669.2, "purchases_beverage": 270.79, "purchases_other": 0, "purchases_total": 4607.93, "credits": 0, "waste": 201.06, "net_purchases": 4607.93, "cogs_pct": 33.6, "has_stock_count": false, "stock_count_date": null, "invoices_total": 109, "invoices_approved": 1, "invoices_unapproved": 108, "top_vendors": [{"name": "US Foods Inc.", "amount": 2998.89}, {"name": "V. MARCHESE INC.", "amount": 1679.83}], "waste_items": [{"item": "PREPPED FOOD- COOKED RICE", "qty": 21.2, "uom": "LB", "amount": 30.1}, {"item": "PRODUCE - BRUSSELS SPROUTS", "qty": 13.6, "uom": "LB", "amount": 27.06}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 18.0, "uom": "LB", "amount": 25.56}, {"item": "PREPPED FOOD- COOKED LENTILS", "qty": 8.2, "uom": "LB", "amount": 24.61}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 12.45, "uom": "LB", "amount": 17.68}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 5.1, "uom": "LB", "amount": 14.38}, {"item": "COOKIE- CHOCOLATE CHIP", "qty": 5.0, "uom": "Each", "amount": 10.0}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 51.25, "uom": "OZ-wt", "amount": 9.23}, {"item": "MEAT - POKE TUNA", "qty": 9.0, "uom": "2.5OZ PORTION", "amount": 7.74}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 2.3, "uom": "LB", "amount": 6.49}], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 20228.81, "est_cogs_pct": 147.5}, "8010": {"name": "Brookfield", "net_sales": 0.0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": [], "inventory_begin": 0, "inventory_end": 0, "inventory_adjustment": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 0.0, "est_cogs_pct": 0}}, "totals": {"net_sales": 150499.25, "purchases_food": 39893.85, "purchases_packaging": 4893.98, "purchases_beverage": 2925.82, "purchases_total": 47713.65, "credits": 273.78, "waste": 268.02, "net_purchases": 47439.87, "cogs_pct": 31.5, "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 208261.03, "est_cogs_pct": 138.4}}], "period_stores": {"8001": {"name": "State Street", "net_sales": 83255.27, "purchases_food": 21891.6, "purchases_packaging": 2417.41, "purchases_beverage": 1260.82, "purchases_other": 0, "purchases_total": 25569.83, "credits": 429.37, "waste": 324.12, "net_purchases": 25140.46, "cogs_pct": 30.2, "budget_cogs_pct": 30.7, "budget_cogs": 28170.12, "has_stock_count": false, "invoices_total": 509, "invoices_approved": 509, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 9279.38}, {"name": "US Foods Inc.", "amount": 8873.76}, {"name": "US FOODS", "amount": 5520.54}, {"name": "GENERAL PARTS", "amount": 1622.96}, {"name": "ROCK CHEESE", "amount": 1282.34}, {"name": "MADISON SOURDOUGH", "amount": 880.8}, {"name": "UW PROVISION COMPANY", "amount": 498.0}, {"name": "FORAGE KOMBUCHA", "amount": 300.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 163.8}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 110366.62, "est_cogs_pct": 132.6}, "8002": {"name": "Hilldale", "net_sales": 94791.62, "purchases_food": 22182.07, "purchases_packaging": 2938.63, "purchases_beverage": 1061.9, "purchases_other": 0, "purchases_total": 26182.6, "credits": 593.76, "waste": 404.76, "net_purchases": 25588.84, "cogs_pct": 27.0, "budget_cogs_pct": 30.9, "budget_cogs": 27367.71, "has_stock_count": false, "invoices_total": 546, "invoices_approved": 498, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 9082.95}, {"name": "US Foods Inc.", "amount": 8382.55}, {"name": "US FOODS", "amount": 7035.11}, {"name": "ROCK CHEESE", "amount": 1095.38}, {"name": "MADISON SOURDOUGH", "amount": 1038.0}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 425.7}, {"name": "FORAGE KOMBUCHA", "amount": 332.0}, {"name": "OSPREY FARMS", "amount": 156.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 90.72}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 112335.01, "est_cogs_pct": 118.5}, "8003": {"name": "Monona", "net_sales": 92063.43, "purchases_food": 22266.48, "purchases_packaging": 2969.83, "purchases_beverage": 2334.36, "purchases_other": 0, "purchases_total": 27570.67, "credits": 116.44, "waste": 0, "net_purchases": 27454.23, "cogs_pct": 29.8, "budget_cogs_pct": 30.7, "budget_cogs": 30214.36, "has_stock_count": true, "invoices_total": 505, "invoices_approved": 461, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 10558.45}, {"name": "US Foods Inc.", "amount": 8117.73}, {"name": "US FOODS", "amount": 6475.29}, {"name": "ROCK CHEESE", "amount": 1183.56}, {"name": "MADISON SOURDOUGH", "amount": 837.8}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 565.95}, {"name": "FORAGE KOMBUCHA", "amount": 380.0}, {"name": "OSPREY FARMS", "amount": 230.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 90.72}], "inventory_begin": 8518.71, "inventory_end": 6708.14, "inv_cogs": 29264.8, "inv_cogs_pct": 31.8, "est_cogs": 120524.07, "est_cogs_pct": 130.9}, "8004": {"name": "Old Sauk", "net_sales": 99926.8, "purchases_food": 25096.93, "purchases_packaging": 2866.94, "purchases_beverage": 1797.13, "purchases_other": 0, "purchases_total": 29761.0, "credits": 36.5, "waste": 0, "net_purchases": 29724.5, "cogs_pct": 29.7, "budget_cogs_pct": 30.7, "budget_cogs": 27055.74, "has_stock_count": false, "invoices_total": 575, "invoices_approved": 512, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 12908.96}, {"name": "US Foods Inc.", "amount": 8695.59}, {"name": "US FOODS", "amount": 6858.98}, {"name": "ROCK CHEESE", "amount": 1079.23}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 393.2}, {"name": "MADISON SOURDOUGH", "amount": 335.3}, {"name": "FORAGE KOMBUCHA", "amount": 316.0}, {"name": "UW PROVISION COMPANY", "amount": 214.8}, {"name": "OSPREY FARMS", "amount": 156.0}, {"name": "R.E. GOLDEN PRODUCE CO.", "amount": 44.96}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 130490.55, "est_cogs_pct": 130.6}, "8005": {"name": "Champaign", "net_sales": 49659.29, "purchases_food": 10397.46, "purchases_packaging": 1388.54, "purchases_beverage": 889.69, "purchases_other": 0, "purchases_total": 12675.69, "credits": 372.06, "waste": 781.56, "net_purchases": 12303.63, "cogs_pct": 24.8, "budget_cogs_pct": 30.7, "budget_cogs": 17435.0, "has_stock_count": false, "invoices_total": 322, "invoices_approved": 264, "top_vendors": [{"name": "WHAT CHEFS WANTS", "amount": 6751.09}, {"name": "US FOODS", "amount": 3842.86}, {"name": "US Foods Inc.", "amount": 2723.49}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 54012.94, "est_cogs_pct": 108.8}, "8006": {"name": "Whitefish Bay", "net_sales": 95442.92, "purchases_food": 22094.0, "purchases_packaging": 2720.34, "purchases_beverage": 1796.15, "purchases_other": 0, "purchases_total": 26610.49, "credits": 227.76, "waste": 1045.91, "net_purchases": 26382.73, "cogs_pct": 27.6, "budget_cogs_pct": 30.7, "budget_cogs": 26036.73, "has_stock_count": false, "invoices_total": 544, "invoices_approved": 450, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 11379.39}, {"name": "US Foods Inc.", "amount": 7477.4}, {"name": "US FOODS", "amount": 7462.1}, {"name": "ROCK CHEESE", "amount": 947.66}, {"name": "Breadsmith", "amount": 663.2}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 115820.18, "est_cogs_pct": 121.4}, "8007": {"name": "Sun Prairie", "net_sales": 98416.17, "purchases_food": 21651.28, "purchases_packaging": 2407.21, "purchases_beverage": 2267.95, "purchases_other": 0, "purchases_total": 26326.44, "credits": 235.8, "waste": 100.14, "net_purchases": 26090.64, "cogs_pct": 26.5, "budget_cogs_pct": 30.7, "budget_cogs": 28151.32, "has_stock_count": false, "invoices_total": 548, "invoices_approved": 498, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 9969.43}, {"name": "US Foods Inc.", "amount": 8723.94}, {"name": "US FOODS", "amount": 5998.66}, {"name": "ROCK CHEESE", "amount": 1100.59}, {"name": "MADISON SOURDOUGH", "amount": 827.6}, {"name": "HEIRLOOM BAKERY & KITCHEN", "amount": 442.2}, {"name": "FORAGE KOMBUCHA", "amount": 284.0}, {"name": "OSPREY FARMS", "amount": 216.0}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 114537.91, "est_cogs_pct": 116.4}, "8008": {"name": "Pewaukee", "net_sales": 57715.7, "purchases_food": 14251.13, "purchases_packaging": 1807.7, "purchases_beverage": 1461.85, "purchases_other": 0, "purchases_total": 17520.68, "credits": 454.28, "waste": 243.96, "net_purchases": 17066.4, "cogs_pct": 29.6, "budget_cogs_pct": 30.7, "budget_cogs": 16307.96, "has_stock_count": false, "invoices_total": 405, "invoices_approved": 317, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 7209.81}, {"name": "US FOODS", "amount": 5449.43}, {"name": "US Foods Inc.", "amount": 5390.93}, {"name": "ROCK CHEESE", "amount": 425.75}, {"name": "Breadsmith", "amount": 420.8}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 74921.5, "est_cogs_pct": 129.8}, "8009": {"name": "MKE Public Market", "net_sales": 66123.62, "purchases_food": 16705.89, "purchases_packaging": 2185.03, "purchases_beverage": 1045.49, "purchases_other": 0, "purchases_total": 19936.41, "credits": 51.79, "waste": 1451.69, "net_purchases": 19884.62, "cogs_pct": 30.1, "budget_cogs_pct": 30.7, "budget_cogs": 21726.76, "has_stock_count": false, "invoices_total": 488, "invoices_approved": 380, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 8136.14}, {"name": "US Foods Inc.", "amount": 5940.85}, {"name": "US FOODS", "amount": 5132.11}, {"name": "ROCK CHEESE", "amount": 881.53}, {"name": "Breadsmith", "amount": 356.8}, {"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 87293.48, "est_cogs_pct": 132.0}, "8010": {"name": "Brookfield", "net_sales": 0.0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 0, "budget_cogs": 0.0, "has_stock_count": false, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "inventory_begin": 0, "inventory_end": 0, "inv_cogs": 0, "inv_cogs_pct": 0, "est_cogs": 0.0, "est_cogs_pct": 0}}, "period_totals": {"net_sales": 737394.82, "purchases_food": 176536.84, "purchases_packaging": 21701.63, "purchases_beverage": 13915.34, "purchases_total": 212153.81, "credits": 2517.76, "waste": 4352.14, "net_purchases": 209636.05, "cogs_pct": 28.4, "budget_cogs_pct": 30.7, "inventory_begin": 8518.71, "inventory_end": 6708.14, "inv_cogs": 29264.8, "inv_cogs_pct": 4.0, "est_cogs": 920302.26, "est_cogs_pct": 124.8}, "gm_status": {"8001": {"name": "State Street", "inventory_done": false, "stock_count_date": null, "invoices_total": 103, "invoices_approved": 103, "invoices_unapproved": 0, "all_approved": true}, "8002": {"name": "Hilldale", "inventory_done": false, "stock_count_date": null, "invoices_total": 94, "invoices_approved": 46, "invoices_unapproved": 48, "all_approved": false}, "8003": {"name": "Monona", "inventory_done": false, "stock_count_date": null, "invoices_total": 134, "invoices_approved": 90, "invoices_unapproved": 44, "all_approved": false}, "8004": {"name": "Old Sauk", "inventory_done": false, "stock_count_date": null, "invoices_total": 145, "invoices_approved": 82, "invoices_unapproved": 63, "all_approved": false}, "8005": {"name": "Champaign", "inventory_done": false, "stock_count_date": null, "invoices_total": 58, "invoices_approved": 0, "invoices_unapproved": 58, "all_approved": false}, "8006": {"name": "Whitefish Bay", "inventory_done": false, "stock_count_date": null, "invoices_total": 91, "invoices_approved": 0, "invoices_unapproved": 91, "all_approved": false}, "8007": {"name": "Sun Prairie", "inventory_done": false, "stock_count_date": null, "invoices_total": 121, "invoices_approved": 71, "invoices_unapproved": 50, "all_approved": false}, "8008": {"name": "Pewaukee", "inventory_done": false, "stock_count_date": null, "invoices_total": 88, "invoices_approved": 0, "invoices_unapproved": 88, "all_approved": false}, "8009": {"name": "MKE Public Market", "inventory_done": false, "stock_count_date": null, "invoices_total": 109, "invoices_approved": 1, "invoices_unapproved": 108, "all_approved": false}, "8010": {"name": "Brookfield", "inventory_done": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}}, "store_order": ["8001", "8002", "8003", "8004", "8005", "8006", "8007", "8008", "8009", "8010"], "has_budget": true, "coverage_factor": 4.39, "coverage_source": "P1 2026"};
+
+const fmt = (n) => n == null ? '\u2014' : '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+const fmtPct = (n) => n == null ? '\u2014' : n.toFixed(1) + '%';
+const fmtChange = (n) => {
+  if (n == null) return '<span class="neutral">N/A</span>';
+  const cls = n >= 0 ? 'positive' : 'negative';
+  const sign = n >= 0 ? '+' : '';
+  return `<span class="${cls}">${sign}${n.toFixed(1)}%</span>`;
+};
+const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const shortDate = (s) => {
+  const d = new Date(s + 'T12:00:00');
+  return (d.getMonth()+1) + '/' + d.getDate();
+};
+
+// Header
+document.getElementById('periodLabel').textContent = `FY${D.fiscal_year} Period ${D.period}`;
+document.getElementById('dateRange').textContent = `${D.period_start} to ${D.period_end}`;
+document.getElementById('lastUpdated').textContent = `Updated: ${new Date(D.generated).toLocaleString()}`;
+document.getElementById('refreshTime').textContent = new Date(D.generated).toLocaleString();
+
+// KPI Cards - R365 invoices + budget for context
+const pt = D.period_totals;
+const budgetVar = pt.budget_cogs_pct > 0 ? pt.cogs_pct - pt.budget_cogs_pct : null;
+const kpis = [
+  { label: 'R365 COGS $', value: fmt(pt.net_purchases), sub: 'Purchases - Credits (R365 OData)', change: null },
+  { label: 'R365 COGS %', value: fmtPct(pt.cogs_pct), sub: 'Budget: ' + fmtPct(pt.budget_cogs_pct), highlight: budgetVar != null ? -budgetVar : null, change: budgetVar != null ? -budgetVar : null, changeLabel: 'vs Budget' },
+  { label: 'Net Sales', value: fmt(pt.net_sales), sub: 'Toast POS', change: null },
+  { label: 'Gross Purchases', value: fmt(pt.purchases_total), sub: 'Food + Pkg + Bev', change: null },
+  { label: 'Credits', value: fmt(pt.credits), sub: 'Vendor credits/returns', change: null },
+  { label: 'Waste', value: fmt(pt.waste), sub: fmtPct(pt.net_sales > 0 ? pt.waste/pt.net_sales*100 : 0) + ' of sales', change: null, highlight: pt.waste > 0 ? -1 : 0 },
+];
+
+const kpiRow = document.getElementById('kpiRow');
+kpis.forEach(k => {
+  const card = document.createElement('div');
+  card.className = 'kpi-card';
+  let changeHtml = '';
+  if (k.change != null) {
+    const cls = k.change >= 0 ? 'positive' : 'negative';
+    const sign = k.change >= 0 ? '+' : '';
+    changeHtml = `<div class="change ${cls}">${sign}${k.change.toFixed(1)}% ${k.changeLabel || ''}</div>`;
+  }
+  let valueColor = '';
+  if (k.highlight != null) {
+    valueColor = k.highlight >= 0 ? 'color:#22c55e' : 'color:#ef4444';
+  }
+  card.innerHTML = `<div class="label">${k.label}</div><div class="value" style="${valueColor}">${k.value}</div><div class="sub">${k.sub}</div>${changeHtml}`;
+  kpiRow.appendChild(card);
+});
+
+// GM Sign-Off Status
+const gmGrid = document.getElementById('gmGrid');
+D.store_order.forEach(sn => {
+  const gm = D.gm_status[sn];
+  if (!gm) return;
+  const card = document.createElement('div');
+  card.className = 'gm-card';
+
+  const invIcon = gm.all_approved ? 'check-done' : (gm.invoices_approved > 0 ? 'check-partial' : 'check-missing');
+  const invSymbol = gm.all_approved ? '\u2713' : (gm.invoices_approved > 0 ? '!' : '\u2717');
+  const invText = gm.invoices_total > 0
+    ? `${gm.invoices_approved}/${gm.invoices_total} approved` + (gm.invoices_unapproved > 0 ? ` (${gm.invoices_unapproved} pending)` : '')
+    : 'No invoices this week';
+
+  const countIcon = gm.inventory_done ? 'check-done' : 'check-missing';
+  const countSymbol = gm.inventory_done ? '\u2713' : '\u2717';
+  const countText = gm.inventory_done
+    ? `Completed ${gm.stock_count_date || ''}`
+    : 'Not yet completed';
+
+  card.innerHTML = `
+    <div class="store-name">${sn} ${gm.name}</div>
+    <div class="check-row">
+      <div class="check-icon ${countIcon}">${countSymbol}</div>
+      <div>Inventory Count: ${countText}</div>
+    </div>
+    <div class="check-row">
+      <div class="check-icon ${invIcon}">${invSymbol}</div>
+      <div>Invoices: ${invText}</div>
+    </div>
+  `;
+  gmGrid.appendChild(card);
+});
+
+// COGS % by Week Chart
+const weekLabels = D.weeks.map(w => 'Wk' + w.week_num + ' (' + shortDate(w.start) + ')');
+const weekR365CogsPct = D.weeks.map(w => w.totals.cogs_pct);
+const budgetLine = D.period_totals.budget_cogs_pct > 0 ? D.weeks.map(() => D.period_totals.budget_cogs_pct) : [];
+
+const cogsPctDatasets = [
+  { label: 'R365 COGS %', data: weekR365CogsPct, backgroundColor: '#3b82f688', borderColor: '#3b82f6', borderWidth: 2, type: 'bar' },
+];
+if (budgetLine.length > 0) {
+  cogsPctDatasets.push({ label: 'Budget COGS %', data: budgetLine, borderColor: '#ef444488', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, type: 'line' });
+}
+
+new Chart(document.getElementById('cogsPctChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: cogsPctDatasets },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#94a3b8' } } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+      y: { ticks: { color: '#64748b', callback: v => v + '%' }, grid: { color: '#1e293b44' }, suggestedMin: 20, suggestedMax: 40 }
+    }
+  }
+});
+
+// COGS Breakdown Donut - R365 invoice categories (what we can see)
+new Chart(document.getElementById('cogsBreakdownChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Food', 'Packaging', 'Beverage', 'Waste'],
+    datasets: [{
+      data: [pt.purchases_food, pt.purchases_packaging, pt.purchases_beverage, pt.waste],
+      backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e', '#ef4444'],
+      borderColor: '#0f172a',
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 16 } },
+    }
+  }
+});
+
+// Store Scoreboard Table - R365 COGS with budget comparison
+const storeTable = document.getElementById('storeTable');
+let tableHtml = `<thead><tr>
+  <th>Store</th>
+  <th class="right">Net Sales</th>
+  <th class="right">Purchases</th>
+  <th class="right">Credits</th>
+  <th class="right">Net COGS</th>
+  <th class="right">COGS %</th>
+  <th class="right">Budget %</th>
+  <th class="right">Variance</th>
+  <th class="right">Waste</th>
+  <th class="right">Inv Count</th>
+</tr></thead><tbody>`;
+
+D.store_order.forEach(sn => {
+  const s = D.period_stores[sn];
+  if (!s) return;
+  const bVar = s.budget_cogs_pct > 0 ? s.cogs_pct - s.budget_cogs_pct : null;
+  const varHtml = bVar != null
+    ? `<span class="${bVar <= 0 ? 'positive' : 'negative'}">${bVar > 0 ? '+' : ''}${bVar.toFixed(1)}%</span>`
+    : '<span class="neutral">\u2014</span>';
+  const cogsCls = s.cogs_pct > 35 ? 'negative' : s.cogs_pct > 32 ? 'warning' : 'positive';
+  const countHtml = s.has_stock_count
+    ? '<span class="positive">\u2713</span>'
+    : '<span class="negative">\u2717</span>';
+
+  tableHtml += `<tr>
+    <td><strong>${sn}</strong> ${s.name}</td>
+    <td class="right">${fmt(s.net_sales)}</td>
+    <td class="right">${fmt(s.purchases_total)}</td>
+    <td class="right" style="color:#94a3b8">${fmt(s.credits)}</td>
+    <td class="right">${fmt(s.net_purchases)}</td>
+    <td class="right"><span class="${cogsCls}">${fmtPct(s.cogs_pct)}</span></td>
+    <td class="right" style="color:#94a3b8">${fmtPct(s.budget_cogs_pct)}</td>
+    <td class="right">${varHtml}</td>
+    <td class="right" style="color:#f59e0b">${fmt(s.waste)}</td>
+    <td class="right">${countHtml}</td>
+  </tr>`;
+});
+
+// Total row
+const totalBudgetVar = pt.budget_cogs_pct > 0 ? pt.cogs_pct - pt.budget_cogs_pct : null;
+const totalVarHtml = totalBudgetVar != null
+  ? `<span class="${totalBudgetVar <= 0 ? 'positive' : 'negative'}">${totalBudgetVar > 0 ? '+' : ''}${totalBudgetVar.toFixed(1)}%</span>`
+  : '<span class="neutral">\u2014</span>';
+tableHtml += `<tr class="total-row">
+  <td><strong>ALL STORES</strong></td>
+  <td class="right">${fmt(pt.net_sales)}</td>
+  <td class="right">${fmt(pt.purchases_total)}</td>
+  <td class="right" style="color:#94a3b8">${fmt(pt.credits)}</td>
+  <td class="right">${fmt(pt.net_purchases)}</td>
+  <td class="right">${fmtPct(pt.cogs_pct)}</td>
+  <td class="right" style="color:#94a3b8">${fmtPct(pt.budget_cogs_pct)}</td>
+  <td class="right">${totalVarHtml}</td>
+  <td class="right" style="color:#f59e0b">${fmt(pt.waste)}</td>
+  <td class="right">\u2014</td>
+</tr>`;
+tableHtml += '</tbody>';
+storeTable.innerHTML = tableHtml;
+
+// Weekly Detail Tabs
+const weekTabBar = document.getElementById('weekTabBar');
+const weekTabContents = document.getElementById('weekTabContents');
+
+D.weeks.forEach((w, i) => {
+  const btn = document.createElement('div');
+  btn.className = 'tab-btn' + (w.is_current ? ' active' : '');
+  btn.innerHTML = `Wk${w.week_num} (${shortDate(w.start)}-${shortDate(w.end)})${w.is_current ? '<span class="current">Current</span>' : ''}`;
+  btn.onclick = (e) => switchWeekTab(i, e.target.closest('.tab-btn'));
+  weekTabBar.appendChild(btn);
+
+  const div = document.createElement('div');
+  div.className = 'tab-content' + (w.is_current ? ' active' : '');
+  div.id = 'week-tab-' + i;
+  div.innerHTML = buildWeekTable(w);
+  weekTabContents.appendChild(div);
+});
+
+function buildWeekTable(w) {
+  let html = `<table class="store-table"><thead><tr>
+    <th>Store</th>
+    <th class="right">Net Sales</th>
+    <th class="right">Food</th>
+    <th class="right">Pkg</th>
+    <th class="right">Bev</th>
+    <th class="right">Purchases</th>
+    <th class="right">Credits</th>
+    <th class="right">Net COGS</th>
+    <th class="right">COGS %</th>
+    <th class="right">Waste</th>
+    <th class="right">Inv Count</th>
+  </tr></thead><tbody>`;
+
+  D.store_order.forEach(sn => {
+    const s = w.stores[sn];
+    if (!s) return;
+    const cogsCls = s.cogs_pct > 35 ? 'negative' : s.cogs_pct > 32 ? 'warning' : 'positive';
+    const countHtml = s.has_stock_count
+      ? `<span class="positive">\u2713 ${s.stock_count_date ? s.stock_count_date.slice(5) : ''}</span>`
+      : '<span class="negative">\u2717</span>';
+
+    html += `<tr>
+      <td><strong>${sn}</strong> ${s.name}</td>
+      <td class="right">${fmt(s.net_sales)}</td>
+      <td class="right">${fmt(s.purchases_food)}</td>
+      <td class="right">${fmt(s.purchases_packaging)}</td>
+      <td class="right">${fmt(s.purchases_beverage)}</td>
+      <td class="right">${fmt(s.purchases_total)}</td>
+      <td class="right" style="color:#94a3b8">${fmt(s.credits)}</td>
+      <td class="right">${fmt(s.net_purchases)}</td>
+      <td class="right"><span class="${cogsCls}">${fmtPct(s.cogs_pct)}</span></td>
+      <td class="right" style="color:#f59e0b">${fmt(s.waste)}</td>
+      <td class="right">${countHtml}</td>
+    </tr>`;
+  });
+
+  // Week total row
+  const t = w.totals;
+  html += `<tr class="total-row">
+    <td><strong>TOTAL</strong></td>
+    <td class="right">${fmt(t.net_sales)}</td>
+    <td class="right">${fmt(t.purchases_food)}</td>
+    <td class="right">${fmt(t.purchases_packaging)}</td>
+    <td class="right">${fmt(t.purchases_beverage)}</td>
+    <td class="right">${fmt(t.purchases_total)}</td>
+    <td class="right" style="color:#94a3b8">${fmt(t.credits)}</td>
+    <td class="right">${fmt(t.net_purchases)}</td>
+    <td class="right">${fmtPct(t.cogs_pct)}</td>
+    <td class="right" style="color:#f59e0b">${fmt(t.waste)}</td>
+    <td class="right">\u2014</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function switchWeekTab(idx, btn) {
+  document.querySelectorAll('#weekTabBar .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#weekTabContents .tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('week-tab-' + idx).classList.add('active');
+}
+
+// Top Vendors (period totals, split into two columns)
+const vendorGrid = document.getElementById('vendorGrid');
+const allVendors = {};
+D.store_order.forEach(sn => {
+  const s = D.period_stores[sn];
+  if (!s) return;
+  s.top_vendors.forEach(v => {
+    allVendors[v.name] = (allVendors[v.name] || 0) + v.amount;
+  });
+});
+const sortedVendors = Object.entries(allVendors).sort((a,b) => b[1] - a[1]);
+const half = Math.ceil(sortedVendors.length / 2);
+[sortedVendors.slice(0, half), sortedVendors.slice(half)].forEach((chunk, ci) => {
+  if (chunk.length === 0) return;
+  const card = document.createElement('div');
+  card.className = 'vendor-card';
+  let html = `<h3>${ci === 0 ? 'Top Vendors' : 'More Vendors'}</h3><ul class="vendor-list">`;
+  chunk.forEach(([name, amt]) => {
+    html += `<li><span class="v-name">${name}</span><span class="v-amt">${fmt(amt)}</span></li>`;
+  });
+  html += '</ul>';
+  card.innerHTML = html;
+  vendorGrid.appendChild(card);
+});
+</script>
+</body>
+</html>
