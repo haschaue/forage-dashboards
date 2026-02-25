@@ -1,0 +1,35 @@
+# Secrets / credentials
+toast_config.py
+r365_config.py
+
+# Office lock files
+.~lock.*
+
+# Python
+__pycache__/
+*.pyc
+
+# Cache and temp
+cache/
+tmp/
+nul
+
+# Claude Code
+.claude/
+
+# Large binary/data files
+*.xlsx
+*.pptx
+*.pdf
+
+# Misc data exports
+r365_d4_b64.txt
+r365_d5_b64.txt
+r365_all_transactions.json
+r365_gl_accounts.json
+r365_pl_data.json
+r365_transactions_index.json
+extracted_data.json
+dashboard_data.json
+COMPLETE_DATA_EXTRACTION.txt
+FINANCIAL_DATA_SUMMARY.txt

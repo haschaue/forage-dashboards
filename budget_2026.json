@@ -1,0 +1,1223 @@
+{
+  "8001": {
+    "name": "State",
+    "1": {
+      "sales": 48585.04,
+      "cogs": 14915.61,
+      "cogs_pct": 30.7,
+      "payroll": 22269.66,
+      "payroll_pct": 45.8,
+      "crew_wages": 14499.92,
+      "crew_wages_pct": 29.8
+    },
+    "2": {
+      "sales": 91759.34,
+      "cogs": 28170.12,
+      "cogs_pct": 30.7,
+      "payroll": 26854.93,
+      "payroll_pct": 29.3,
+      "crew_wages": 18612.28,
+      "crew_wages_pct": 20.3
+    },
+    "3": {
+      "sales": 108283.35,
+      "cogs": 33242.99,
+      "cogs_pct": 30.7,
+      "payroll": 32634.35,
+      "payroll_pct": 30.1,
+      "crew_wages": 22651.61,
+      "crew_wages_pct": 20.9
+    },
+    "4": {
+      "sales": 109640.16,
+      "cogs": 33659.53,
+      "cogs_pct": 30.7,
+      "payroll": 29147.56,
+      "payroll_pct": 26.6,
+      "crew_wages": 20668.45,
+      "crew_wages_pct": 18.9
+    },
+    "5": {
+      "sales": 90472.8,
+      "cogs": 27775.15,
+      "cogs_pct": 30.7,
+      "payroll": 26854.93,
+      "payroll_pct": 29.7,
+      "crew_wages": 18612.28,
+      "crew_wages_pct": 20.6
+    },
+    "6": {
+      "sales": 92156.4,
+      "cogs": 29102.99,
+      "cogs_pct": 31.6,
+      "payroll": 30914.87,
+      "payroll_pct": 33.5,
+      "crew_wages": 21109.48,
+      "crew_wages_pct": 22.9
+    },
+    "7": {
+      "sales": 84227.85,
+      "cogs": 26599.16,
+      "cogs_pct": 31.6,
+      "payroll": 26396.4,
+      "payroll_pct": 31.3,
+      "crew_wages": 18201.04,
+      "crew_wages_pct": 21.6
+    },
+    "8": {
+      "sales": 80246.25,
+      "cogs": 25341.77,
+      "cogs_pct": 31.6,
+      "payroll": 25937.87,
+      "payroll_pct": 32.3,
+      "crew_wages": 17789.81,
+      "crew_wages_pct": 22.2
+    },
+    "9": {
+      "sales": 146276.28,
+      "cogs": 46194.05,
+      "cogs_pct": 31.6,
+      "payroll": 37219.62,
+      "payroll_pct": 25.4,
+      "crew_wages": 26763.96,
+      "crew_wages_pct": 18.3
+    },
+    "10": {
+      "sales": 117132.4,
+      "cogs": 35959.65,
+      "cogs_pct": 30.7,
+      "payroll": 30064.62,
+      "payroll_pct": 25.7,
+      "crew_wages": 21490.92,
+      "crew_wages_pct": 18.3
+    },
+    "11": {
+      "sales": 101115.3,
+      "cogs": 31042.4,
+      "cogs_pct": 30.7,
+      "payroll": 28230.51,
+      "payroll_pct": 27.9,
+      "crew_wages": 19845.98,
+      "crew_wages_pct": 19.6
+    },
+    "12": {
+      "sales": 78264.9,
+      "cogs": 24027.32,
+      "cogs_pct": 30.7,
+      "payroll": 29195.4,
+      "payroll_pct": 37.3,
+      "crew_wages": 19567.35,
+      "crew_wages_pct": 25.0
+    }
+  },
+  "8002": {
+    "name": "Hilldale",
+    "1": {
+      "sales": 84982.74,
+      "cogs": 26259.67,
+      "cogs_pct": 30.9,
+      "payroll": 27210.23,
+      "payroll_pct": 32.0,
+      "crew_wages": 18862.9,
+      "crew_wages_pct": 22.2
+    },
+    "2": {
+      "sales": 88568.64,
+      "cogs": 27367.71,
+      "cogs_pct": 30.9,
+      "payroll": 27691.83,
+      "payroll_pct": 31.3,
+      "crew_wages": 19289.09,
+      "crew_wages_pct": 21.8
+    },
+    "3": {
+      "sales": 134746.5,
+      "cogs": 41636.67,
+      "cogs_pct": 30.9,
+      "payroll": 36656.01,
+      "payroll_pct": 27.2,
+      "crew_wages": 26138.99,
+      "crew_wages_pct": 19.4
+    },
+    "4": {
+      "sales": 104760.49,
+      "cogs": 32370.99,
+      "cogs_pct": 30.9,
+      "payroll": 29618.2,
+      "payroll_pct": 28.3,
+      "crew_wages": 20993.84,
+      "crew_wages_pct": 20.0
+    },
+    "5": {
+      "sales": 111731.42,
+      "cogs": 34525.01,
+      "cogs_pct": 30.9,
+      "payroll": 30099.79,
+      "payroll_pct": 26.9,
+      "crew_wages": 21420.03,
+      "crew_wages_pct": 19.2
+    },
+    "6": {
+      "sales": 147458.84,
+      "cogs": 46862.42,
+      "cogs_pct": 31.8,
+      "payroll": 38461.98,
+      "payroll_pct": 26.1,
+      "crew_wages": 27737.2,
+      "crew_wages_pct": 18.8
+    },
+    "7": {
+      "sales": 113245.71,
+      "cogs": 35989.49,
+      "cogs_pct": 31.8,
+      "payroll": 30581.39,
+      "payroll_pct": 27.0,
+      "crew_wages": 21846.22,
+      "crew_wages_pct": 19.3
+    },
+    "8": {
+      "sales": 117680.04,
+      "cogs": 37398.72,
+      "cogs_pct": 31.8,
+      "payroll": 31062.98,
+      "payroll_pct": 26.4,
+      "crew_wages": 22272.41,
+      "crew_wages_pct": 18.9
+    },
+    "9": {
+      "sales": 152283.29,
+      "cogs": 48395.63,
+      "cogs_pct": 31.8,
+      "payroll": 39063.98,
+      "payroll_pct": 25.7,
+      "crew_wages": 28269.93,
+      "crew_wages_pct": 18.6
+    },
+    "10": {
+      "sales": 114013.44,
+      "cogs": 35230.15,
+      "cogs_pct": 30.9,
+      "payroll": 30581.39,
+      "payroll_pct": 26.8,
+      "crew_wages": 21846.22,
+      "crew_wages_pct": 19.2
+    },
+    "11": {
+      "sales": 115401.14,
+      "cogs": 35658.95,
+      "cogs_pct": 30.9,
+      "payroll": 30581.39,
+      "payroll_pct": 26.5,
+      "crew_wages": 21846.22,
+      "crew_wages_pct": 18.9
+    },
+    "12": {
+      "sales": 114301.12,
+      "cogs": 35319.05,
+      "cogs_pct": 30.9,
+      "payroll": 34248.04,
+      "payroll_pct": 30.0,
+      "crew_wages": 24008.04,
+      "crew_wages_pct": 21.0
+    }
+  },
+  "8003": {
+    "name": "Monona",
+    "1": {
+      "sales": 90088.95,
+      "cogs": 27657.31,
+      "cogs_pct": 30.7,
+      "payroll": 27251.01,
+      "payroll_pct": 30.2,
+      "crew_wages": 18950.68,
+      "crew_wages_pct": 21.0
+    },
+    "2": {
+      "sales": 98418.1,
+      "cogs": 30214.36,
+      "cogs_pct": 30.7,
+      "payroll": 28193.12,
+      "payroll_pct": 28.6,
+      "crew_wages": 19788.1,
+      "crew_wages_pct": 20.1
+    },
+    "3": {
+      "sales": 131597.94,
+      "cogs": 40400.57,
+      "cogs_pct": 30.7,
+      "payroll": 36098.84,
+      "payroll_pct": 27.4,
+      "crew_wages": 25680.41,
+      "crew_wages_pct": 19.5
+    },
+    "4": {
+      "sales": 119820.8,
+      "cogs": 36784.99,
+      "cogs_pct": 30.7,
+      "payroll": 30548.37,
+      "payroll_pct": 25.5,
+      "crew_wages": 21881.66,
+      "crew_wages_pct": 18.3
+    },
+    "5": {
+      "sales": 123786.36,
+      "cogs": 38002.41,
+      "cogs_pct": 30.7,
+      "payroll": 31019.42,
+      "payroll_pct": 25.1,
+      "crew_wages": 22300.38,
+      "crew_wages_pct": 18.0
+    },
+    "6": {
+      "sales": 155891.02,
+      "cogs": 49230.38,
+      "cogs_pct": 31.6,
+      "payroll": 39042.9,
+      "payroll_pct": 25.0,
+      "crew_wages": 28297.36,
+      "crew_wages_pct": 18.2
+    },
+    "7": {
+      "sales": 106423.52,
+      "cogs": 33608.55,
+      "cogs_pct": 31.6,
+      "payroll": 29135.22,
+      "payroll_pct": 27.4,
+      "crew_wages": 20625.53,
+      "crew_wages_pct": 19.4
+    },
+    "8": {
+      "sales": 119548.92,
+      "cogs": 37753.55,
+      "cogs_pct": 31.6,
+      "payroll": 30548.37,
+      "payroll_pct": 25.6,
+      "crew_wages": 21881.66,
+      "crew_wages_pct": 18.3
+    },
+    "9": {
+      "sales": 139034.9,
+      "cogs": 43907.22,
+      "cogs_pct": 31.6,
+      "payroll": 36687.65,
+      "payroll_pct": 26.4,
+      "crew_wages": 26203.8,
+      "crew_wages_pct": 18.8
+    },
+    "10": {
+      "sales": 106413.48,
+      "cogs": 32668.94,
+      "cogs_pct": 30.7,
+      "payroll": 29135.22,
+      "payroll_pct": 27.4,
+      "crew_wages": 20625.53,
+      "crew_wages_pct": 19.4
+    },
+    "11": {
+      "sales": 108669.75,
+      "cogs": 33361.61,
+      "cogs_pct": 30.7,
+      "payroll": 29606.27,
+      "payroll_pct": 27.2,
+      "crew_wages": 21044.24,
+      "crew_wages_pct": 19.4
+    },
+    "12": {
+      "sales": 106400.52,
+      "cogs": 32664.96,
+      "cogs_pct": 30.7,
+      "payroll": 33154.77,
+      "payroll_pct": 31.2,
+      "crew_wages": 23063.46,
+      "crew_wages_pct": 21.7
+    }
+  },
+  "8004": {
+    "name": "Middleton",
+    "1": {
+      "sales": 84752.72,
+      "cogs": 26019.09,
+      "cogs_pct": 30.7,
+      "payroll": 25326.93,
+      "payroll_pct": 29.9,
+      "crew_wages": 17208.26,
+      "crew_wages_pct": 20.3
+    },
+    "2": {
+      "sales": 88129.46,
+      "cogs": 27055.74,
+      "cogs_pct": 30.7,
+      "payroll": 25766.28,
+      "payroll_pct": 29.2,
+      "crew_wages": 17597.06,
+      "crew_wages_pct": 20.0
+    },
+    "3": {
+      "sales": 126204.0,
+      "cogs": 38744.63,
+      "cogs_pct": 30.7,
+      "payroll": 33498.9,
+      "payroll_pct": 26.5,
+      "crew_wages": 23360.09,
+      "crew_wages_pct": 18.5
+    },
+    "4": {
+      "sales": 108165.75,
+      "cogs": 33206.89,
+      "cogs_pct": 30.7,
+      "payroll": 27963.02,
+      "payroll_pct": 25.9,
+      "crew_wages": 19541.08,
+      "crew_wages_pct": 18.1
+    },
+    "5": {
+      "sales": 117925.6,
+      "cogs": 36203.16,
+      "cogs_pct": 30.7,
+      "payroll": 28841.72,
+      "payroll_pct": 24.5,
+      "crew_wages": 20318.69,
+      "crew_wages_pct": 17.2
+    },
+    "6": {
+      "sales": 157574.56,
+      "cogs": 49762.05,
+      "cogs_pct": 31.6,
+      "payroll": 36794.02,
+      "payroll_pct": 23.4,
+      "crew_wages": 26276.12,
+      "crew_wages_pct": 16.7
+    },
+    "7": {
+      "sales": 115654.24,
+      "cogs": 36523.61,
+      "cogs_pct": 31.6,
+      "payroll": 28402.37,
+      "payroll_pct": 24.6,
+      "crew_wages": 19929.88,
+      "crew_wages_pct": 17.2
+    },
+    "8": {
+      "sales": 121051.84,
+      "cogs": 38228.17,
+      "cogs_pct": 31.6,
+      "payroll": 29281.07,
+      "payroll_pct": 24.2,
+      "crew_wages": 20707.49,
+      "crew_wages_pct": 17.1
+    },
+    "9": {
+      "sales": 139714.64,
+      "cogs": 44121.88,
+      "cogs_pct": 31.6,
+      "payroll": 34597.27,
+      "payroll_pct": 24.8,
+      "crew_wages": 24332.1,
+      "crew_wages_pct": 17.4
+    },
+    "10": {
+      "sales": 111537.44,
+      "cogs": 34241.99,
+      "cogs_pct": 30.7,
+      "payroll": 27963.02,
+      "payroll_pct": 25.1,
+      "crew_wages": 19541.08,
+      "crew_wages_pct": 17.5
+    },
+    "11": {
+      "sales": 108698.1,
+      "cogs": 33370.32,
+      "cogs_pct": 30.7,
+      "payroll": 27963.02,
+      "payroll_pct": 25.7,
+      "crew_wages": 19541.08,
+      "crew_wages_pct": 18.0
+    },
+    "12": {
+      "sales": 108120.0,
+      "cogs": 33192.84,
+      "cogs_pct": 30.7,
+      "payroll": 31302.16,
+      "payroll_pct": 29.0,
+      "crew_wages": 21416.07,
+      "crew_wages_pct": 19.8
+    }
+  },
+  "8005": {
+    "name": "Champaign",
+    "1": {
+      "sales": 26569.6,
+      "cogs": 8156.87,
+      "cogs_pct": 30.7,
+      "payroll": 18786.64,
+      "payroll_pct": 70.7,
+      "crew_wages": 12098.25,
+      "crew_wages_pct": 45.5
+    },
+    "2": {
+      "sales": 56791.54,
+      "cogs": 17435.0,
+      "cogs_pct": 30.7,
+      "payroll": 23021.72,
+      "payroll_pct": 40.5,
+      "crew_wages": 15879.57,
+      "crew_wages_pct": 28.0
+    },
+    "3": {
+      "sales": 80358.3,
+      "cogs": 24670.0,
+      "cogs_pct": 30.7,
+      "payroll": 29688.02,
+      "payroll_pct": 36.9,
+      "crew_wages": 20811.63,
+      "crew_wages_pct": 25.9
+    },
+    "4": {
+      "sales": 82561.5,
+      "cogs": 25346.38,
+      "cogs_pct": 30.7,
+      "payroll": 25885.71,
+      "payroll_pct": 31.4,
+      "crew_wages": 18436.71,
+      "crew_wages_pct": 22.3
+    },
+    "5": {
+      "sales": 73909.8,
+      "cogs": 22690.31,
+      "cogs_pct": 30.7,
+      "payroll": 24931.05,
+      "payroll_pct": 33.7,
+      "crew_wages": 17584.33,
+      "crew_wages_pct": 23.8
+    },
+    "6": {
+      "sales": 59566.32,
+      "cogs": 18286.86,
+      "cogs_pct": 30.7,
+      "payroll": 26704.7,
+      "payroll_pct": 44.8,
+      "crew_wages": 18147.94,
+      "crew_wages_pct": 30.5
+    },
+    "7": {
+      "sales": 44388.07,
+      "cogs": 13627.14,
+      "cogs_pct": 30.7,
+      "payroll": 21589.73,
+      "payroll_pct": 48.6,
+      "crew_wages": 14601.01,
+      "crew_wages_pct": 32.9
+    },
+    "8": {
+      "sales": 59781.05,
+      "cogs": 18352.78,
+      "cogs_pct": 30.7,
+      "payroll": 23021.72,
+      "payroll_pct": 38.5,
+      "crew_wages": 15879.57,
+      "crew_wages_pct": 26.6
+    },
+    "9": {
+      "sales": 97818.84,
+      "cogs": 30030.38,
+      "cogs_pct": 30.7,
+      "payroll": 31478.02,
+      "payroll_pct": 32.2,
+      "crew_wages": 22409.84,
+      "crew_wages_pct": 22.9
+    },
+    "10": {
+      "sales": 70943.04,
+      "cogs": 21779.51,
+      "cogs_pct": 30.7,
+      "payroll": 24453.72,
+      "payroll_pct": 34.5,
+      "crew_wages": 17158.14,
+      "crew_wages_pct": 24.2
+    },
+    "11": {
+      "sales": 56782.05,
+      "cogs": 17432.09,
+      "cogs_pct": 30.7,
+      "payroll": 23021.72,
+      "payroll_pct": 40.5,
+      "crew_wages": 15879.57,
+      "crew_wages_pct": 28.0
+    },
+    "12": {
+      "sales": 40699.8,
+      "cogs": 12494.84,
+      "cogs_pct": 30.7,
+      "payroll": 24914.7,
+      "payroll_pct": 61.2,
+      "crew_wages": 16549.74,
+      "crew_wages_pct": 40.7
+    }
+  },
+  "8006": {
+    "name": "WFB",
+    "1": {
+      "sales": 84121.35,
+      "cogs": 25825.25,
+      "cogs_pct": 30.7,
+      "payroll": 24902.17,
+      "payroll_pct": 29.6,
+      "crew_wages": 17208.26,
+      "crew_wages_pct": 20.5
+    },
+    "2": {
+      "sales": 84810.2,
+      "cogs": 26036.73,
+      "cogs_pct": 30.7,
+      "payroll": 24902.17,
+      "payroll_pct": 29.4,
+      "crew_wages": 17208.26,
+      "crew_wages_pct": 20.3
+    },
+    "3": {
+      "sales": 108039.71,
+      "cogs": 33168.19,
+      "cogs_pct": 30.7,
+      "payroll": 30823.4,
+      "payroll_pct": 28.5,
+      "crew_wages": 21416.07,
+      "crew_wages_pct": 19.8
+    },
+    "4": {
+      "sales": 93890.42,
+      "cogs": 28824.36,
+      "cogs_pct": 30.7,
+      "payroll": 25773.09,
+      "payroll_pct": 27.5,
+      "crew_wages": 17985.86,
+      "crew_wages_pct": 19.2
+    },
+    "5": {
+      "sales": 104103.36,
+      "cogs": 31959.73,
+      "cogs_pct": 30.7,
+      "payroll": 27079.47,
+      "payroll_pct": 26.0,
+      "crew_wages": 19152.28,
+      "crew_wages_pct": 18.4
+    },
+    "6": {
+      "sales": 149076.28,
+      "cogs": 47078.29,
+      "cogs_pct": 31.6,
+      "payroll": 35178.0,
+      "payroll_pct": 23.6,
+      "crew_wages": 25304.11,
+      "crew_wages_pct": 17.0
+    },
+    "7": {
+      "sales": 114239.38,
+      "cogs": 36076.8,
+      "cogs_pct": 31.6,
+      "payroll": 27950.39,
+      "payroll_pct": 24.5,
+      "crew_wages": 19929.88,
+      "crew_wages_pct": 17.4
+    },
+    "8": {
+      "sales": 118006.62,
+      "cogs": 37266.49,
+      "cogs_pct": 31.6,
+      "payroll": 28385.85,
+      "payroll_pct": 24.1,
+      "crew_wages": 20318.69,
+      "crew_wages_pct": 17.2
+    },
+    "9": {
+      "sales": 139065.12,
+      "cogs": 43916.76,
+      "cogs_pct": 31.6,
+      "payroll": 34089.35,
+      "payroll_pct": 24.5,
+      "crew_wages": 24332.1,
+      "crew_wages_pct": 17.5
+    },
+    "10": {
+      "sales": 102731.76,
+      "cogs": 31538.65,
+      "cogs_pct": 30.7,
+      "payroll": 26644.01,
+      "payroll_pct": 25.9,
+      "crew_wages": 18763.47,
+      "crew_wages_pct": 18.3
+    },
+    "11": {
+      "sales": 102593.16,
+      "cogs": 31496.1,
+      "cogs_pct": 30.7,
+      "payroll": 26644.01,
+      "payroll_pct": 26.0,
+      "crew_wages": 18763.47,
+      "crew_wages_pct": 18.3
+    },
+    "12": {
+      "sales": 100812.36,
+      "cogs": 30949.39,
+      "cogs_pct": 30.7,
+      "payroll": 30279.07,
+      "payroll_pct": 30.0,
+      "crew_wages": 20930.07,
+      "crew_wages_pct": 20.8
+    }
+  },
+  "8007": {
+    "name": "Sun Prairie",
+    "1": {
+      "sales": 89252.8,
+      "cogs": 27400.61,
+      "cogs_pct": 30.7,
+      "payroll": 27020.01,
+      "payroll_pct": 30.3,
+      "crew_wages": 18950.68,
+      "crew_wages_pct": 21.2
+    },
+    "2": {
+      "sales": 91698.1,
+      "cogs": 28151.32,
+      "cogs_pct": 30.7,
+      "payroll": 27020.01,
+      "payroll_pct": 29.5,
+      "crew_wages": 18950.68,
+      "crew_wages_pct": 20.7
+    },
+    "3": {
+      "sales": 133172.0,
+      "cogs": 40883.8,
+      "cogs_pct": 30.7,
+      "payroll": 35816.09,
+      "payroll_pct": 26.9,
+      "crew_wages": 25680.41,
+      "crew_wages_pct": 19.3
+    },
+    "4": {
+      "sales": 115485.5,
+      "cogs": 35454.05,
+      "cogs_pct": 30.7,
+      "payroll": 29846.32,
+      "payroll_pct": 25.8,
+      "crew_wages": 21462.95,
+      "crew_wages_pct": 18.6
+    },
+    "5": {
+      "sales": 117819.6,
+      "cogs": 36170.62,
+      "cogs_pct": 30.7,
+      "payroll": 30317.37,
+      "payroll_pct": 25.7,
+      "crew_wages": 21881.66,
+      "crew_wages_pct": 18.6
+    },
+    "6": {
+      "sales": 152349.12,
+      "cogs": 48111.85,
+      "cogs_pct": 31.6,
+      "payroll": 38171.34,
+      "payroll_pct": 25.1,
+      "crew_wages": 27773.97,
+      "crew_wages_pct": 18.2
+    },
+    "7": {
+      "sales": 117548.7,
+      "cogs": 37121.88,
+      "cogs_pct": 31.6,
+      "payroll": 30317.37,
+      "payroll_pct": 25.8,
+      "crew_wages": 21881.66,
+      "crew_wages_pct": 18.6
+    },
+    "8": {
+      "sales": 119231.98,
+      "cogs": 37653.46,
+      "cogs_pct": 31.6,
+      "payroll": 30317.37,
+      "payroll_pct": 25.4,
+      "crew_wages": 21881.66,
+      "crew_wages_pct": 18.4
+    },
+    "9": {
+      "sales": 133610.88,
+      "cogs": 42194.32,
+      "cogs_pct": 31.6,
+      "payroll": 35816.09,
+      "payroll_pct": 26.8,
+      "crew_wages": 25680.41,
+      "crew_wages_pct": 19.2
+    },
+    "10": {
+      "sales": 106712.32,
+      "cogs": 32760.68,
+      "cogs_pct": 30.7,
+      "payroll": 28904.22,
+      "payroll_pct": 27.1,
+      "crew_wages": 20625.53,
+      "crew_wages_pct": 19.3
+    },
+    "11": {
+      "sales": 108583.22,
+      "cogs": 33335.05,
+      "cogs_pct": 30.7,
+      "payroll": 29375.27,
+      "payroll_pct": 27.1,
+      "crew_wages": 21044.24,
+      "crew_wages_pct": 19.4
+    },
+    "12": {
+      "sales": 116600.0,
+      "cogs": 35796.2,
+      "cogs_pct": 30.7,
+      "payroll": 34049.65,
+      "payroll_pct": 29.2,
+      "crew_wages": 24110.24,
+      "crew_wages_pct": 20.7
+    }
+  },
+  "8008": {
+    "name": "Pewaukee",
+    "1": {
+      "sales": 52879.34,
+      "cogs": 16233.96,
+      "cogs_pct": 30.7,
+      "payroll": 23319.4,
+      "payroll_pct": 44.1,
+      "crew_wages": 15453.38,
+      "crew_wages_pct": 29.2
+    },
+    "2": {
+      "sales": 53120.4,
+      "cogs": 16307.96,
+      "cogs_pct": 30.7,
+      "payroll": 23319.4,
+      "payroll_pct": 43.9,
+      "crew_wages": 15453.38,
+      "crew_wages_pct": 29.1
+    },
+    "3": {
+      "sales": 71750.4,
+      "cogs": 22027.37,
+      "cogs_pct": 30.7,
+      "payroll": 29423.95,
+      "payroll_pct": 41.0,
+      "crew_wages": 19746.15,
+      "crew_wages_pct": 27.5
+    },
+    "4": {
+      "sales": 68629.6,
+      "cogs": 21069.29,
+      "cogs_pct": 30.7,
+      "payroll": 25216.79,
+      "payroll_pct": 36.7,
+      "crew_wages": 17158.14,
+      "crew_wages_pct": 25.0
+    },
+    "5": {
+      "sales": 69651.4,
+      "cogs": 21382.98,
+      "cogs_pct": 30.7,
+      "payroll": 25216.79,
+      "payroll_pct": 36.2,
+      "crew_wages": 17158.14,
+      "crew_wages_pct": 24.6
+    },
+    "6": {
+      "sales": 100503.75,
+      "cogs": 31739.08,
+      "cogs_pct": 31.6,
+      "payroll": 32981.56,
+      "payroll_pct": 32.8,
+      "crew_wages": 22942.57,
+      "crew_wages_pct": 22.8
+    },
+    "7": {
+      "sales": 79874.1,
+      "cogs": 25224.24,
+      "cogs_pct": 31.6,
+      "payroll": 26165.49,
+      "payroll_pct": 32.8,
+      "crew_wages": 18010.52,
+      "crew_wages_pct": 22.5
+    },
+    "8": {
+      "sales": 76929.48,
+      "cogs": 24294.33,
+      "cogs_pct": 31.6,
+      "payroll": 26165.49,
+      "payroll_pct": 34.0,
+      "crew_wages": 18010.52,
+      "crew_wages_pct": 23.4
+    },
+    "9": {
+      "sales": 90007.06,
+      "cogs": 28424.23,
+      "cogs_pct": 31.6,
+      "payroll": 31795.69,
+      "payroll_pct": 35.3,
+      "crew_wages": 21877.1,
+      "crew_wages_pct": 24.3
+    },
+    "10": {
+      "sales": 72685.6,
+      "cogs": 22314.48,
+      "cogs_pct": 30.7,
+      "payroll": 25691.14,
+      "payroll_pct": 35.3,
+      "crew_wages": 17584.33,
+      "crew_wages_pct": 24.2
+    },
+    "11": {
+      "sales": 74665.5,
+      "cogs": 22922.31,
+      "cogs_pct": 30.7,
+      "payroll": 25691.14,
+      "payroll_pct": 34.4,
+      "crew_wages": 17584.33,
+      "crew_wages_pct": 23.6
+    },
+    "12": {
+      "sales": 82500.0,
+      "cogs": 25327.5,
+      "cogs_pct": 30.7,
+      "payroll": 30609.82,
+      "payroll_pct": 37.1,
+      "crew_wages": 20811.63,
+      "crew_wages_pct": 25.2
+    }
+  },
+  "8009": {
+    "name": "Public Market",
+    "1": {
+      "sales": 68000.0,
+      "cogs": 20876.0,
+      "cogs_pct": 30.7,
+      "payroll": 22859.39,
+      "payroll_pct": 33.6,
+      "crew_wages": 15653.04,
+      "crew_wages_pct": 23.0
+    },
+    "2": {
+      "sales": 70771.2,
+      "cogs": 21726.76,
+      "cogs_pct": 30.7,
+      "payroll": 22859.39,
+      "payroll_pct": 32.3,
+      "crew_wages": 15653.04,
+      "crew_wages_pct": 22.1
+    },
+    "3": {
+      "sales": 88269.4,
+      "cogs": 27098.71,
+      "cogs_pct": 30.7,
+      "payroll": 28272.88,
+      "payroll_pct": 32.0,
+      "crew_wages": 19472.05,
+      "crew_wages_pct": 22.1
+    },
+    "4": {
+      "sales": 73092.85,
+      "cogs": 22439.5,
+      "cogs_pct": 30.7,
+      "payroll": 23290.97,
+      "payroll_pct": 31.9,
+      "crew_wages": 16041.84,
+      "crew_wages_pct": 21.9
+    },
+    "5": {
+      "sales": 81990.4,
+      "cogs": 25171.05,
+      "cogs_pct": 30.7,
+      "payroll": 24154.11,
+      "payroll_pct": 29.5,
+      "crew_wages": 16819.45,
+      "crew_wages_pct": 20.5
+    },
+    "6": {
+      "sales": 121463.0,
+      "cogs": 38358.02,
+      "cogs_pct": 31.6,
+      "payroll": 32049.13,
+      "payroll_pct": 26.4,
+      "crew_wages": 22874.08,
+      "crew_wages_pct": 18.8
+    },
+    "7": {
+      "sales": 103989.9,
+      "cogs": 32840.01,
+      "cogs_pct": 31.6,
+      "payroll": 26311.97,
+      "payroll_pct": 25.3,
+      "crew_wages": 18763.47,
+      "crew_wages_pct": 18.0
+    },
+    "8": {
+      "sales": 96522.54,
+      "cogs": 30481.82,
+      "cogs_pct": 31.6,
+      "payroll": 25880.4,
+      "payroll_pct": 26.8,
+      "crew_wages": 18374.67,
+      "crew_wages_pct": 19.0
+    },
+    "9": {
+      "sales": 99067.6,
+      "cogs": 31285.55,
+      "cogs_pct": 31.6,
+      "payroll": 29351.81,
+      "payroll_pct": 29.6,
+      "crew_wages": 20444.06,
+      "crew_wages_pct": 20.6
+    },
+    "10": {
+      "sales": 75475.18,
+      "cogs": 23170.88,
+      "cogs_pct": 30.7,
+      "payroll": 23290.97,
+      "payroll_pct": 30.9,
+      "crew_wages": 16041.84,
+      "crew_wages_pct": 21.3
+    },
+    "11": {
+      "sales": 65363.84,
+      "cogs": 20066.7,
+      "cogs_pct": 30.7,
+      "payroll": 22427.82,
+      "payroll_pct": 34.3,
+      "crew_wages": 15264.24,
+      "crew_wages_pct": 23.4
+    },
+    "12": {
+      "sales": 75260.0,
+      "cogs": 23104.82,
+      "cogs_pct": 30.7,
+      "payroll": 27193.94,
+      "payroll_pct": 36.1,
+      "crew_wages": 18500.04,
+      "crew_wages_pct": 24.6
+    }
+  },
+  "8010": {
+    "name": "Brookfield",
+    "1": {
+      "sales": 0.0,
+      "cogs": 0.0,
+      "cogs_pct": 0,
+      "payroll": 0.0,
+      "payroll_pct": 0,
+      "crew_wages": 0.0,
+      "crew_wages_pct": 0
+    },
+    "2": {
+      "sales": 0.0,
+      "cogs": 0.0,
+      "cogs_pct": 0,
+      "payroll": 0.0,
+      "payroll_pct": 0,
+      "crew_wages": 0.0,
+      "crew_wages_pct": 0
+    },
+    "3": {
+      "sales": 0.0,
+      "cogs": 0.0,
+      "cogs_pct": 0,
+      "payroll": 0.0,
+      "payroll_pct": 0,
+      "crew_wages": 0.0,
+      "crew_wages_pct": 0
+    },
+    "4": {
+      "sales": 74000.0,
+      "cogs": 22718.0,
+      "cogs_pct": 30.7,
+      "payroll": 33957.35,
+      "payroll_pct": 45.9,
+      "crew_wages": 24974.84,
+      "crew_wages_pct": 33.7
+    },
+    "5": {
+      "sales": 78000.0,
+      "cogs": 23946.0,
+      "cogs_pct": 30.7,
+      "payroll": 27902.03,
+      "payroll_pct": 35.8,
+      "crew_wages": 19519.6,
+      "crew_wages_pct": 25.0
+    },
+    "6": {
+      "sales": 105000.0,
+      "cogs": 33159.0,
+      "cogs_pct": 31.6,
+      "payroll": 32266.74,
+      "payroll_pct": 30.7,
+      "crew_wages": 22239.77,
+      "crew_wages_pct": 21.2
+    },
+    "7": {
+      "sales": 88000.0,
+      "cogs": 27790.4,
+      "cogs_pct": 31.6,
+      "payroll": 26519.28,
+      "payroll_pct": 30.1,
+      "crew_wages": 18273.87,
+      "crew_wages_pct": 20.8
+    },
+    "8": {
+      "sales": 88000.0,
+      "cogs": 27790.4,
+      "cogs_pct": 31.6,
+      "payroll": 26519.28,
+      "payroll_pct": 30.1,
+      "crew_wages": 18273.87,
+      "crew_wages_pct": 20.8
+    },
+    "9": {
+      "sales": 105000.0,
+      "cogs": 33159.0,
+      "cogs_pct": 31.6,
+      "payroll": 32266.74,
+      "payroll_pct": 30.7,
+      "crew_wages": 22239.77,
+      "crew_wages_pct": 21.2
+    },
+    "10": {
+      "sales": 80000.0,
+      "cogs": 24560.0,
+      "cogs_pct": 30.7,
+      "payroll": 25622.93,
+      "payroll_pct": 32.0,
+      "crew_wages": 17466.35,
+      "crew_wages_pct": 21.8
+    },
+    "11": {
+      "sales": 80000.0,
+      "cogs": 24560.0,
+      "cogs_pct": 30.7,
+      "payroll": 25622.93,
+      "payroll_pct": 32.0,
+      "crew_wages": 17466.35,
+      "crew_wages_pct": 21.8
+    },
+    "12": {
+      "sales": 92500.0,
+      "cogs": 28397.5,
+      "cogs_pct": 30.7,
+      "payroll": 30586.1,
+      "payroll_pct": 33.1,
+      "crew_wages": 20725.67,
+      "crew_wages_pct": 22.4
+    }
+  },
+  "ALL": {
+    "name": "All Stores",
+    "1": {
+      "sales": 629232.54,
+      "cogs": 193344.35,
+      "cogs_pct": 30.7,
+      "payroll": 218945.45,
+      "payroll_pct": 34.8,
+      "crew_wages": 148885.37,
+      "crew_wages_pct": 23.7
+    },
+    "2": {
+      "sales": 724066.98,
+      "cogs": 222465.7,
+      "cogs_pct": 30.7,
+      "payroll": 229628.85,
+      "payroll_pct": 31.7,
+      "crew_wages": 158431.46,
+      "crew_wages_pct": 21.9
+    },
+    "3": {
+      "sales": 982421.6,
+      "cogs": 301872.92,
+      "cogs_pct": 30.7,
+      "payroll": 292912.42,
+      "payroll_pct": 29.8,
+      "crew_wages": 204957.41,
+      "crew_wages_pct": 20.9
+    },
+    "4": {
+      "sales": 950047.07,
+      "cogs": 291873.97,
+      "cogs_pct": 30.7,
+      "payroll": 281247.39,
+      "payroll_pct": 29.6,
+      "crew_wages": 199145.38,
+      "crew_wages_pct": 21.0
+    },
+    "5": {
+      "sales": 969390.74,
+      "cogs": 297826.42,
+      "cogs_pct": 30.7,
+      "payroll": 276416.69,
+      "payroll_pct": 28.5,
+      "crew_wages": 194766.83,
+      "crew_wages_pct": 20.1
+    },
+    "6": {
+      "sales": 1241039.29,
+      "cogs": 391690.94,
+      "cogs_pct": 31.6,
+      "payroll": 342565.25,
+      "payroll_pct": 27.6,
+      "crew_wages": 242702.6,
+      "crew_wages_pct": 19.6
+    },
+    "7": {
+      "sales": 967591.47,
+      "cogs": 305401.26,
+      "cogs_pct": 31.6,
+      "payroll": 273369.6,
+      "payroll_pct": 28.3,
+      "crew_wages": 192063.08,
+      "crew_wages_pct": 19.8
+    },
+    "8": {
+      "sales": 996998.72,
+      "cogs": 314561.48,
+      "cogs_pct": 31.6,
+      "payroll": 277120.4,
+      "payroll_pct": 27.8,
+      "crew_wages": 195390.35,
+      "crew_wages_pct": 19.6
+    },
+    "9": {
+      "sales": 1241878.6,
+      "cogs": 391629.02,
+      "cogs_pct": 31.5,
+      "payroll": 342366.21,
+      "payroll_pct": 27.6,
+      "crew_wages": 242553.07,
+      "crew_wages_pct": 19.5
+    },
+    "10": {
+      "sales": 957644.66,
+      "cogs": 294224.94,
+      "cogs_pct": 30.7,
+      "payroll": 272351.23,
+      "payroll_pct": 28.4,
+      "crew_wages": 191143.41,
+      "crew_wages_pct": 20.0
+    },
+    "11": {
+      "sales": 921872.06,
+      "cogs": 283245.52,
+      "cogs_pct": 30.7,
+      "payroll": 269164.08,
+      "payroll_pct": 29.2,
+      "crew_wages": 188279.72,
+      "crew_wages_pct": 20.4
+    },
+    "12": {
+      "sales": 915458.7,
+      "cogs": 281274.42,
+      "cogs_pct": 30.7,
+      "payroll": 305659.89,
+      "payroll_pct": 33.4,
+      "crew_wages": 209682.3,
+      "crew_wages_pct": 22.9
+    }
+  }
+}
