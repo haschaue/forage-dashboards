@@ -339,66 +339,27 @@ def load_budget():
 
 
 # ============================================================
-# MAIN
+# BUILD PERIOD DATA (reusable for multi-period support)
 # ============================================================
-def main():
-    print("=" * 60)
-    print("  Forage Kitchen - Daily Sales Dashboard Builder")
-    print("  Powered by Toast POS API")
-    print("  " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    print("=" * 60)
-
-    # Determine current period
-    fy, period, period_start, period_end = get_current_period()
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    yesterday = today - timedelta(days=1)
-
-    # If today is the first day of a new period, show the previous period instead
-    # (no completed days in the new period yet)
-    if today == period_start:
-        print(f"\n  First day of FY{fy} P{period} — showing completed P{period - 1} instead")
-        all_periods = get_445_periods(FISCAL_YEAR_STARTS[fy])
-        prev = all_periods[period - 2]  # period is 1-indexed, list is 0-indexed
-        period = prev["period"]
-        period_start = prev["start"]
-        period_end = prev["end"]
-
-    print(f"\n  Current: FY{fy} Period {period}")
-    print(f"  Period:  {period_start.strftime('%Y-%m-%d')} to {period_end.strftime('%Y-%m-%d')}")
-    print(f"  Today:   {today.strftime('%Y-%m-%d')}")
-    print(f"  Data through: {period_end.strftime('%Y-%m-%d')} (completed period)"
-          if yesterday >= period_end else
-          f"  Data through: {yesterday.strftime('%Y-%m-%d')} (completed days only)")
-
-    # Get prior year equivalent
-    py_start, py_end = get_prior_year_dates(period_start, period_end, fy)
-    if py_start:
-        print(f"  Prior Yr: {py_start.strftime('%Y-%m-%d')} to {py_end.strftime('%Y-%m-%d')}")
-
-    # Current period: period_start through yesterday (completed days only)
+def build_period_data(token, fy, period, period_start, period_end, today, yesterday, budget):
+    """Build complete dashboard data dict for a single fiscal period.
+    Uses cached data for completed days — fast for past periods.
+    """
     data_end = min(yesterday, period_end)
-
-    # Prior year: same number of completed days into the period
-    # e.g., if we're 21 completed days into current period, compare 21 days of PY
     days_completed = (data_end - period_start).days + 1
+
+    # Prior year equivalent period
+    py_start, py_end = get_prior_year_dates(period_start, period_end, fy)
+    py_compare_end = None
     if py_start:
         py_compare_end = min(py_start + timedelta(days=days_completed - 1), py_end)
-        print(f"  PY compare: {py_start.strftime('%Y-%m-%d')} to {py_compare_end.strftime('%Y-%m-%d')} ({days_completed} days)")
 
-    # Cache keys
     current_cache_key = f"FY{fy}_P{period}_current"
     prior_cache_key = f"FY{fy}_P{period}_prior"
-
-    # Authenticate with Toast
-    print("\n[1/5] Authenticating with Toast API...")
-    token = toast_authenticate()
-    print(f"  Authenticated successfully")
-
-    # Pull data for all stores
     store_numbers = sorted(TOAST_RESTAURANTS.keys())
 
-    # Current period sales (with caching)
-    print(f"\n[2/5] Pulling current period sales (P{period}, through {data_end.strftime('%Y-%m-%d')})...")
+    # Pull current period sales (with caching)
+    print(f"  Sales (P{period})...")
     current_sales = {}
     for store_num in store_numbers:
         restaurant = TOAST_RESTAURANTS[store_num]
@@ -411,8 +372,8 @@ def main():
         total_ns = sum(d["net_sales"] for d in store_sales.values())
         print(f"{len(store_sales)} days (cached: {from_cache}, pulled: {from_api}), ${total_ns:,.0f}")
 
-    # Current period labor (with caching)
-    print(f"\n[3/5] Pulling current period labor (P{period})...")
+    # Pull current period labor (with caching)
+    print(f"  Labor (P{period})...")
     current_labor = {}
     for store_num in store_numbers:
         restaurant = TOAST_RESTAURANTS[store_num]
@@ -426,10 +387,10 @@ def main():
         total_hrs = sum(d["labor_hours"] for d in store_labor.values())
         print(f"{len(store_labor)} days, {total_hrs:,.0f} hrs, ${total_lc:,.0f} cost")
 
-    # Pull prior year same period (with caching)
+    # Pull prior year sales (with caching)
     prior_sales = {}
     if py_start:
-        print(f"\n[4/5] Pulling prior year sales (FY{fy-1} P{period}, {days_completed} days)...")
+        print(f"  Prior year sales (P{period})...")
         for store_num in store_numbers:
             restaurant = TOAST_RESTAURANTS[store_num]
             print(f"    {store_num} {restaurant['name']}...", end=" ", flush=True)
@@ -440,19 +401,8 @@ def main():
             prior_sales[store_num] = store_py_sales
             total_ns = sum(d["net_sales"] for d in store_py_sales.values())
             print(f"{len(store_py_sales)} days (cached: {from_cache}, pulled: {from_api}), ${total_ns:,.0f}")
-    else:
-        print("\n[4/5] No prior year data available for this period")
 
-    # Load budget
-    print("\n[5/5] Checking for budget data...")
-    budget = load_budget()
-
-    # ============================================================
-    # BUILD DASHBOARD DATA
-    # ============================================================
-    print("\nBuilding dashboard data...")
-
-    # Aggregate totals for current period by store
+    # Build store totals
     store_totals = {}
     for store_num in store_numbers:
         store_name = SSS_CONFIG.get(store_num, {}).get("name", TOAST_RESTAURANTS[store_num]["name"])
@@ -464,23 +414,18 @@ def main():
             "daily": []
         }
 
-        # Get all dates for this store
         store_dates = sorted(current_sales.get(store_num, {}).keys())
-
         for date_str in store_dates:
             day_sales = current_sales[store_num].get(date_str, {})
             day_labor = current_labor.get(store_num, {}).get(date_str, {})
-
             ns = day_sales.get("net_sales", 0)
             lc = day_labor.get("labor_cost", 0)
-
             totals["net_sales"] += ns
             totals["gross_sales"] += ns + day_sales.get("tax", 0)
             totals["guests"] += day_sales.get("guests", 0)
             totals["checks"] += day_sales.get("checks", 0)
             totals["labor_cost"] += lc
             totals["labor_hours"] += day_labor.get("labor_hours", 0)
-
             totals["daily"].append({
                 "date": date_str,
                 "net_sales": round(ns, 2),
@@ -497,7 +442,7 @@ def main():
             totals["py_net_sales"] += day_sales.get("net_sales", 0)
             totals["py_guests"] += day_sales.get("guests", 0)
 
-        # Add PY daily data to current daily entries (matched by day-of-period)
+        # Match PY daily data by day-of-period
         py_dates = sorted(store_py.keys())
         for i, entry in enumerate(totals["daily"]):
             if i < len(py_dates):
@@ -506,7 +451,7 @@ def main():
             else:
                 entry["py_net_sales"] = 0
 
-        # Compute summary metrics
+        # Summary metrics
         ns = totals["net_sales"]
         totals["labor_pct"] = round(totals["labor_cost"] / ns * 100, 1) if ns > 0 else 0
         totals["avg_check"] = round(ns / totals["checks"], 2) if totals["checks"] > 0 else 0
@@ -518,7 +463,7 @@ def main():
                 (totals["net_sales"] - totals["py_net_sales"]) / totals["py_net_sales"] * 100, 1
             )
 
-        # Budget data - prorate through yesterday (completed days only)
+        # Budget data
         if budget and store_num in budget:
             period_str = str(period)
             store_budget = budget[store_num].get(period_str, {})
@@ -542,7 +487,7 @@ def main():
 
         store_totals[store_num] = totals
 
-    # Calculate "All Stores" totals
+    # All stores combined
     all_stores = {
         "name": "All Stores",
         "net_sales": sum(s["net_sales"] for s in store_totals.values()),
@@ -557,7 +502,7 @@ def main():
     all_stores["labor_pct"] = round(all_stores["labor_cost"] / ns * 100, 1) if ns > 0 else 0
     all_stores["avg_check"] = round(ns / all_stores["checks"], 2) if all_stores["checks"] > 0 else 0
 
-    # SSS for all eligible stores combined
+    # SSS for all eligible stores
     sss_current = sum(
         s["net_sales"] for num, s in store_totals.items()
         if SSS_CONFIG.get(num, {}).get("sss_start_period") and
@@ -591,21 +536,18 @@ def main():
         all_stores["budget_payroll_pct"] = 0
         all_stores["budget_crew_wages_pct"] = 0
 
-    # Build daily totals for all stores
-    # Gather all dates across all stores
+    # Daily totals for all stores
     all_dates = sorted(set(
         date_str
         for store_data in current_sales.values()
         for date_str in store_data.keys()
     ))
-
     all_stores["daily"] = []
     py_all_dates = sorted(set(
         date_str
         for store_data in prior_sales.values()
         for date_str in store_data.keys()
     ))
-
     for i, date_str in enumerate(all_dates):
         day_ns = sum(
             current_sales.get(sn, {}).get(date_str, {}).get("net_sales", 0)
@@ -640,12 +582,7 @@ def main():
             "py_net_sales": round(py_day_ns, 2),
         })
 
-    # ============================================================
-    # GENERATE HTML DASHBOARD
-    # ============================================================
-    print("Generating HTML dashboard...")
-
-    dashboard_data = {
+    return {
         "generated": datetime.now().isoformat(),
         "fiscal_year": fy,
         "period": period,
@@ -661,7 +598,76 @@ def main():
         "data_source": "Toast POS",
     }
 
-    # Round all floats for JSON
+
+# ============================================================
+# MAIN
+# ============================================================
+def main():
+    print("=" * 60)
+    print("  Forage Kitchen - Daily Sales Dashboard Builder")
+    print("  Powered by Toast POS API")
+    print("  " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("=" * 60)
+
+    # Determine current period
+    fy, period, period_start, period_end = get_current_period()
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday = today - timedelta(days=1)
+
+    # If first day of new period, default to previous completed period
+    display_period = period
+    display_start = period_start
+    display_end = period_end
+    if today == period_start:
+        print(f"\n  First day of FY{fy} P{period} -- showing completed P{period - 1} instead")
+        all_periods = get_445_periods(FISCAL_YEAR_STARTS[fy])
+        prev = all_periods[period - 2]
+        display_period = prev["period"]
+        display_start = prev["start"]
+        display_end = prev["end"]
+
+    print(f"\n  Default: FY{fy} Period {display_period}")
+    print(f"  Period:  {display_start.strftime('%Y-%m-%d')} to {display_end.strftime('%Y-%m-%d')}")
+
+    # Authenticate
+    print("\nAuthenticating with Toast API...")
+    token = toast_authenticate()
+    print("  Authenticated successfully")
+
+    # Load budget
+    print("\nChecking for budget data...")
+    budget = load_budget()
+
+    # Build data for display period
+    print(f"\n--- FY{fy} P{display_period} ---")
+    display_data = build_period_data(token, fy, display_period, display_start, display_end, today, yesterday, budget)
+
+    # Build data for previous period (fully cached, fast)
+    all_periods_list = get_445_periods(FISCAL_YEAR_STARTS[fy])
+    prev_period_num = display_period - 1
+    periods = {}
+    period_options = []
+
+    periods[f"P{display_period}"] = display_data
+    period_options.append({
+        "key": f"P{display_period}",
+        "label": f"P{display_period} ({display_start.strftime('%m/%d')} - {display_end.strftime('%m/%d')})"
+    })
+
+    if prev_period_num >= 1:
+        prev_p = all_periods_list[prev_period_num - 1]
+        print(f"\n--- FY{fy} P{prev_period_num} [cached] ---")
+        prev_data = build_period_data(token, fy, prev_period_num, prev_p["start"], prev_p["end"], today, yesterday, budget)
+        periods[f"P{prev_period_num}"] = prev_data
+        period_options.append({
+            "key": f"P{prev_period_num}",
+            "label": f"P{prev_period_num} ({prev_p['start'].strftime('%m/%d')} - {prev_p['end'].strftime('%m/%d')})"
+        })
+
+    # Sort options by period number
+    period_options.sort(key=lambda x: int(x["key"][1:]))
+
+    # Round all floats
     def round_dict(d):
         if isinstance(d, dict):
             return {k: round_dict(v) for k, v in d.items()}
@@ -671,19 +677,30 @@ def main():
             return round(d, 2)
         return d
 
-    dashboard_data = round_dict(dashboard_data)
+    periods = round_dict(periods)
 
-    data_json = json.dumps(dashboard_data)
+    multi_data = {
+        "periods": periods,
+        "default": f"P{display_period}",
+        "period_options": period_options,
+    }
 
+    # Generate HTML
+    print("\nGenerating HTML dashboard...")
+    data_json = json.dumps(multi_data)
     html = generate_html(data_json)
 
     outpath = os.path.join(OUTDIR, "daily_dashboard.html")
     with open(outpath, "w", encoding="utf-8") as f:
         f.write(html)
 
+    data_end = min(yesterday, display_end)
+    days_completed = (data_end - display_start).days + 1
     print(f"\n{'='*60}")
     print(f"  Dashboard saved to: {outpath}")
-    print(f"  Data through: {data_end.strftime('%Y-%m-%d')} ({days_completed} completed days)")
+    print(f"  Default period: P{display_period} ({days_completed} completed days)")
+    if prev_period_num >= 1:
+        print(f"  Also includes: P{prev_period_num}")
     print(f"  Open in your browser to view!")
     print(f"{'='*60}")
 
@@ -706,6 +723,10 @@ def generate_html(data_json):
   .header .meta {{ text-align: right; font-size: 13px; color: #94a3b8; }}
   .header .meta .period {{ font-size: 16px; color: #f8fafc; font-weight: 600; }}
   .header .meta .source {{ font-size: 11px; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px; }}
+
+  #periodSelect {{ background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-size: 16px; font-weight: 600; cursor: pointer; outline: none; font-family: inherit; }}
+  #periodSelect:hover {{ border-color: #22c55e; }}
+  #periodSelect:focus {{ border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }}
 
   .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
 
@@ -775,7 +796,7 @@ def generate_html(data_json):
 <div class="header">
   <h1>Forage <span>Kitchen</span> &mdash; Daily Sales</h1>
   <div class="meta">
-    <div class="period" id="periodLabel"></div>
+    <select id="periodSelect"></select>
     <div id="dateRange"></div>
     <div id="lastUpdated"></div>
     <div class="source" id="dataSource"></div>
@@ -813,11 +834,13 @@ def generate_html(data_json):
 </div>
 
 <script>
-const D = {data_json};
+const ALLDATA = {data_json};
+const PERIODS = ALLDATA.periods;
+let D = PERIODS[ALLDATA.default];
 
 const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const fmt = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('en-US', {{minimumFractionDigits:0, maximumFractionDigits:0}});
-const fmtPct = (n) => n == null ? '—' : n.toFixed(1) + '%';
+const fmt = (n) => n == null ? '\u2014' : '$' + Number(n).toLocaleString('en-US', {{minimumFractionDigits:0, maximumFractionDigits:0}});
+const fmtPct = (n) => n == null ? '\u2014' : n.toFixed(1) + '%';
 const fmtChange = (n) => {{
   if (n == null) return '<span class="neutral">N/A</span>';
   const cls = n >= 0 ? 'positive' : 'negative';
@@ -825,167 +848,19 @@ const fmtChange = (n) => {{
   return `<span class="${{cls}}">${{sign}}${{n.toFixed(1)}}%</span>`;
 }};
 
-// Header
-document.getElementById('periodLabel').textContent = `FY${{D.fiscal_year}} Period ${{D.period}}`;
-document.getElementById('dateRange').textContent = `${{D.period_start}} to ${{D.period_end}} (${{D.days_completed}} completed days)`;
-document.getElementById('lastUpdated').textContent = `Updated: ${{new Date(D.generated).toLocaleString()}}`;
-document.getElementById('refreshTime').textContent = new Date(D.generated).toLocaleString();
-document.getElementById('dataThrough').textContent = D.data_through;
-document.getElementById('dataSource').textContent = `Data source: ${{D.data_source || 'Toast POS'}}`;
-
-// KPI Cards
-const a = D.all_stores;
-const kpis = [
-  {{ label: 'Period Net Sales', value: fmt(a.net_sales), sub: 'Budget: ' + fmt(a.budget_sales_prorated) + ' (prorated)', change: a.budget_variance, changeLabel: 'vs Budget' }},
-  {{ label: 'SSS Growth', value: a.sss_growth != null ? (a.sss_growth >= 0 ? '+' : '') + a.sss_growth + '%' : 'N/A', sub: 'Same store sales YoY (' + D.days_completed + ' days)', change: null, highlight: a.sss_growth }},
-  {{ label: 'Labor %', value: fmtPct(a.labor_pct), sub: 'Bgt Crew Wages: ' + fmtPct(a.budget_crew_wages_pct), change: a.budget_crew_wages_pct > 0 ? -(a.labor_pct - a.budget_crew_wages_pct) : null, changeLabel: 'vs Budget' }},
-  {{ label: 'Avg Check', value: fmt(a.avg_check), sub: a.checks.toLocaleString() + ' checks', change: null }},
-  {{ label: 'Guest Count', value: a.guests.toLocaleString(), sub: 'Period to date', change: null }},
-  {{ label: 'Full Period Budget', value: fmt(a.budget_sales), sub: 'Pace: ' + (a.budget_sales > 0 ? (a.net_sales / a.budget_sales_prorated * 100).toFixed(0) + '% of prorated' : 'N/A'), change: null, highlight: a.budget_variance }},
-];
-
-const kpiRow = document.getElementById('kpiRow');
-kpis.forEach(k => {{
-  const card = document.createElement('div');
-  card.className = 'kpi-card';
-  let changeHtml = '';
-  if (k.change != null) {{
-    const cls = k.change >= 0 ? 'positive' : 'negative';
-    const sign = k.change >= 0 ? '+' : '';
-    changeHtml = `<div class="change ${{cls}}">${{sign}}${{k.change.toFixed(1)}}% ${{k.changeLabel || ''}}</div>`;
-  }}
-  let valueColor = '';
-  if (k.highlight != null) {{
-    valueColor = k.highlight >= 0 ? 'color:#22c55e' : 'color:#ef4444';
-  }}
-  card.innerHTML = `<div class="label">${{k.label}}</div><div class="value" style="${{valueColor}}">${{k.value}}</div><div class="sub">${{k.sub}}</div>${{changeHtml}}`;
-  kpiRow.appendChild(card);
+// Populate period selector
+const periodSelect = document.getElementById('periodSelect');
+ALLDATA.period_options.forEach(opt => {{
+  const o = document.createElement('option');
+  o.value = opt.key;
+  o.textContent = 'FY' + PERIODS[opt.key].fiscal_year + ' ' + opt.label;
+  if (opt.key === ALLDATA.default) o.selected = true;
+  periodSelect.appendChild(o);
 }});
+periodSelect.addEventListener('change', function() {{ switchPeriod(this.value); }});
 
-// Sales Chart
-const dailyData = a.daily || [];
-const labels = dailyData.map(d => {{
-  const dt = new Date(d.date + 'T12:00:00');
-  return dayNames[dt.getDay()] + ' ' + (dt.getMonth()+1) + '/' + dt.getDate();
-}});
-
-new Chart(document.getElementById('salesChart'), {{
-  type: 'bar',
-  data: {{
-    labels: labels,
-    datasets: [
-      {{ label: 'Current Year', data: dailyData.map(d => d.net_sales), backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 }},
-      {{ label: 'Prior Year', data: dailyData.map(d => d.py_net_sales), backgroundColor: '#64748b44', borderColor: '#64748b', borderWidth: 1 }},
-    ]
-  }},
-  options: {{
-    responsive: true,
-    plugins: {{ legend: {{ labels: {{ color: '#94a3b8' }} }} }},
-    scales: {{
-      x: {{ ticks: {{ color: '#64748b', font: {{ size: 10 }} }}, grid: {{ color: '#1e293b' }} }},
-      y: {{ ticks: {{ color: '#64748b', callback: v => '$' + (v/1000).toFixed(0) + 'k' }}, grid: {{ color: '#1e293b44' }} }}
-    }}
-  }}
-}});
-
-// Labor Chart - with budget crew wages % reference line
-const budgetCrewPct = a.budget_crew_wages_pct || 0;
-const budgetCrewLine = budgetCrewPct > 0 ? dailyData.map(() => budgetCrewPct) : [];
-const laborDatasets = [
-  {{ label: 'Labor %', data: dailyData.map(d => d.labor_pct), borderColor: '#f59e0b', backgroundColor: '#f59e0b22', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#f59e0b' }},
-];
-if (budgetCrewLine.length > 0) {{
-  laborDatasets.push({{ label: 'Bgt Crew Wages %', data: budgetCrewLine, borderColor: '#ef444488', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, fill: false }});
-}}
-new Chart(document.getElementById('laborChart'), {{
-  type: 'line',
-  data: {{
-    labels: labels,
-    datasets: laborDatasets,
-  }},
-  options: {{
-    responsive: true,
-    plugins: {{ legend: {{ labels: {{ color: '#94a3b8' }} }} }},
-    scales: {{
-      x: {{ ticks: {{ color: '#64748b', font: {{ size: 10 }} }}, grid: {{ color: '#1e293b' }} }},
-      y: {{ ticks: {{ color: '#64748b', callback: v => v + '%' }}, grid: {{ color: '#1e293b44' }}, suggestedMin: 15, suggestedMax: 45 }}
-    }}
-  }}
-}});
-
-// Store Scoreboard Table
-const storeTable = document.getElementById('storeTable');
-let tableHtml = `<thead><tr>
-  <th>Store</th>
-  <th class="right">Net Sales</th>
-  <th class="right">Budget (pro)</th>
-  <th class="right">vs Budget</th>
-  <th class="right">Prior Year</th>
-  <th class="right">SSS Growth</th>
-  <th class="right">Labor %</th>
-  <th class="right">Bgt Crew %</th>
-  <th class="right">Guests</th>
-  <th class="right">Avg Check</th>
-</tr></thead><tbody>`;
-
-D.store_order.forEach(num => {{
-  const s = D.stores[num];
-  if (!s) return;
-  const sssHtml = s.sss_growth != null ? fmtChange(s.sss_growth) : '<span class="neutral">N/A</span>';
-  const budgetVarHtml = s.budget_variance != null ? fmtChange(s.budget_variance) : '<span class="neutral">—</span>';
-  const laborCls = s.labor_pct > 35 ? 'negative' : s.labor_pct > 30 ? 'neutral' : 'positive';
-  const bgtLaborCls = s.budget_crew_wages_pct > 0 ? (s.labor_pct > s.budget_crew_wages_pct + 2 ? 'negative' : s.labor_pct < s.budget_crew_wages_pct - 2 ? 'positive' : 'neutral') : 'neutral';
-  tableHtml += `<tr>
-    <td><strong>${{num}}</strong> ${{s.name}}</td>
-    <td class="right">${{fmt(s.net_sales)}}</td>
-    <td class="right" style="color:#94a3b8">${{fmt(s.budget_sales_prorated)}}</td>
-    <td class="right">${{budgetVarHtml}}</td>
-    <td class="right" style="color:#94a3b8">${{fmt(s.py_net_sales)}}</td>
-    <td class="right">${{sssHtml}}</td>
-    <td class="right"><span class="${{laborCls}}">${{fmtPct(s.labor_pct)}}</span></td>
-    <td class="right" style="color:#94a3b8">${{fmtPct(s.budget_crew_wages_pct)}}</td>
-    <td class="right">${{s.guests.toLocaleString()}}</td>
-    <td class="right">${{fmt(s.avg_check)}}</td>
-  </tr>`;
-}});
-
-// Total row
-const aBudgetVarHtml = a.budget_variance != null ? fmtChange(a.budget_variance) : '<span class="neutral">—</span>';
-tableHtml += `<tr class="total-row">
-  <td><strong>ALL STORES</strong></td>
-  <td class="right">${{fmt(a.net_sales)}}</td>
-  <td class="right" style="color:#94a3b8">${{fmt(a.budget_sales_prorated)}}</td>
-  <td class="right">${{aBudgetVarHtml}}</td>
-  <td class="right" style="color:#94a3b8">${{fmt(a.py_net_sales)}}</td>
-  <td class="right">${{a.sss_growth != null ? fmtChange(a.sss_growth) : '<span class="neutral">N/A</span>'}}</td>
-  <td class="right">${{fmtPct(a.labor_pct)}}</td>
-  <td class="right" style="color:#94a3b8">${{fmtPct(a.budget_crew_wages_pct)}}</td>
-  <td class="right">${{a.guests.toLocaleString()}}</td>
-  <td class="right">${{fmt(a.avg_check)}}</td>
-</tr>`;
-tableHtml += '</tbody>';
-storeTable.innerHTML = tableHtml;
-
-// Daily Detail Tabs
-const tabBar = document.getElementById('tabBar');
-const tabContents = document.getElementById('tabContents');
-
-// Add "All Stores" tab first
-const allBtn = document.createElement('div');
-allBtn.className = 'tab-btn active';
-allBtn.textContent = 'All Stores';
-allBtn.onclick = () => switchTab('all');
-tabBar.appendChild(allBtn);
-
-D.store_order.forEach(num => {{
-  const s = D.stores[num];
-  if (!s) return;
-  const btn = document.createElement('div');
-  btn.className = 'tab-btn';
-  btn.textContent = num + ' ' + s.name;
-  btn.onclick = () => switchTab(num);
-  tabBar.appendChild(btn);
-}});
+let salesChartInstance = null;
+let laborChartInstance = null;
 
 function buildDailyTable(daily) {{
   let html = `<table class="daily-table"><thead><tr>
@@ -1014,7 +889,7 @@ function buildDailyTable(daily) {{
       <td><span class="day-name">${{dayName}}</span> ${{d.date}}</td>
       <td>${{fmt(d.net_sales)}}</td>
       <td style="color:#64748b">${{fmt(d.py_net_sales)}}</td>
-      <td>${{yoyPct != null ? fmtChange(yoyPct) : '<span class="neutral">—</span>'}}</td>
+      <td>${{yoyPct != null ? fmtChange(yoyPct) : '<span class="neutral">\u2014</span>'}}</td>
       <td>${{fmt(d.labor_cost)}}</td>
       <td><span class="${{laborCls}}">${{fmtPct(d.labor_pct)}}</span></td>
       <td>${{(d.guests || 0).toLocaleString()}}</td>
@@ -1029,7 +904,7 @@ function buildDailyTable(daily) {{
     <td>TOTAL</td>
     <td>${{fmt(totalNS)}}</td>
     <td style="color:#64748b">${{fmt(totalPY)}}</td>
-    <td>${{totalYoy != null ? fmtChange(totalYoy) : '<span class="neutral">—</span>'}}</td>
+    <td>${{totalYoy != null ? fmtChange(totalYoy) : '<span class="neutral">\u2014</span>'}}</td>
     <td>${{fmt(totalLC)}}</td>
     <td><span class="${{totalLaborCls}}">${{fmtPct(totalLaborPct)}}</span></td>
     <td>${{totalGuests.toLocaleString()}}</td>
@@ -1039,29 +914,204 @@ function buildDailyTable(daily) {{
   return html;
 }}
 
-// Build tab content for all stores
-const allDiv = document.createElement('div');
-allDiv.className = 'tab-content active';
-allDiv.id = 'tab-all';
-allDiv.innerHTML = buildDailyTable(a.daily || []);
-tabContents.appendChild(allDiv);
+function renderDashboard(D) {{
+  // Header info
+  document.getElementById('dateRange').textContent = D.period_start + ' to ' + D.period_end + ' (' + D.days_completed + ' completed days)';
+  document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date(D.generated).toLocaleString();
+  document.getElementById('refreshTime').textContent = new Date(D.generated).toLocaleString();
+  document.getElementById('dataThrough').textContent = D.data_through;
+  document.getElementById('dataSource').textContent = 'Data source: ' + (D.data_source || 'Toast POS');
 
-D.store_order.forEach(num => {{
-  const s = D.stores[num];
-  if (!s) return;
-  const div = document.createElement('div');
-  div.className = 'tab-content';
-  div.id = 'tab-' + num;
-  div.innerHTML = buildDailyTable(s.daily || []);
-  tabContents.appendChild(div);
-}});
+  // KPI Cards
+  const a = D.all_stores;
+  const kpis = [
+    {{ label: 'Period Net Sales', value: fmt(a.net_sales), sub: 'Budget: ' + fmt(a.budget_sales_prorated) + ' (prorated)', change: a.budget_variance, changeLabel: 'vs Budget' }},
+    {{ label: 'SSS Growth', value: a.sss_growth != null ? (a.sss_growth >= 0 ? '+' : '') + a.sss_growth + '%' : 'N/A', sub: 'Same store sales YoY (' + D.days_completed + ' days)', change: null, highlight: a.sss_growth }},
+    {{ label: 'Labor %', value: fmtPct(a.labor_pct), sub: 'Bgt Crew Wages: ' + fmtPct(a.budget_crew_wages_pct), change: a.budget_crew_wages_pct > 0 ? -(a.labor_pct - a.budget_crew_wages_pct) : null, changeLabel: 'vs Budget' }},
+    {{ label: 'Avg Check', value: fmt(a.avg_check), sub: a.checks.toLocaleString() + ' checks', change: null }},
+    {{ label: 'Guest Count', value: a.guests.toLocaleString(), sub: 'Period to date', change: null }},
+    {{ label: 'Full Period Budget', value: fmt(a.budget_sales), sub: 'Pace: ' + (a.budget_sales > 0 ? (a.net_sales / a.budget_sales_prorated * 100).toFixed(0) + '% of prorated' : 'N/A'), change: null, highlight: a.budget_variance }},
+  ];
 
-function switchTab(id) {{
+  const kpiRow = document.getElementById('kpiRow');
+  kpiRow.innerHTML = '';
+  kpis.forEach(k => {{
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    let changeHtml = '';
+    if (k.change != null) {{
+      const cls = k.change >= 0 ? 'positive' : 'negative';
+      const sign = k.change >= 0 ? '+' : '';
+      changeHtml = `<div class="change ${{cls}}">${{sign}}${{k.change.toFixed(1)}}% ${{k.changeLabel || ''}}</div>`;
+    }}
+    let valueColor = '';
+    if (k.highlight != null) {{
+      valueColor = k.highlight >= 0 ? 'color:#22c55e' : 'color:#ef4444';
+    }}
+    card.innerHTML = `<div class="label">${{k.label}}</div><div class="value" style="${{valueColor}}">${{k.value}}</div><div class="sub">${{k.sub}}</div>${{changeHtml}}`;
+    kpiRow.appendChild(card);
+  }});
+
+  // Sales Chart
+  const dailyData = a.daily || [];
+  const labels = dailyData.map(d => {{
+    const dt = new Date(d.date + 'T12:00:00');
+    return dayNames[dt.getDay()] + ' ' + (dt.getMonth()+1) + '/' + dt.getDate();
+  }});
+
+  if (salesChartInstance) salesChartInstance.destroy();
+  salesChartInstance = new Chart(document.getElementById('salesChart'), {{
+    type: 'bar',
+    data: {{
+      labels: labels,
+      datasets: [
+        {{ label: 'Current Year', data: dailyData.map(d => d.net_sales), backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 }},
+        {{ label: 'Prior Year', data: dailyData.map(d => d.py_net_sales), backgroundColor: '#64748b44', borderColor: '#64748b', borderWidth: 1 }},
+      ]
+    }},
+    options: {{
+      responsive: true,
+      plugins: {{ legend: {{ labels: {{ color: '#94a3b8' }} }} }},
+      scales: {{
+        x: {{ ticks: {{ color: '#64748b', font: {{ size: 10 }} }}, grid: {{ color: '#1e293b' }} }},
+        y: {{ ticks: {{ color: '#64748b', callback: v => '$' + (v/1000).toFixed(0) + 'k' }}, grid: {{ color: '#1e293b44' }} }}
+      }}
+    }}
+  }});
+
+  // Labor Chart
+  const budgetCrewPct = a.budget_crew_wages_pct || 0;
+  const budgetCrewLine = budgetCrewPct > 0 ? dailyData.map(() => budgetCrewPct) : [];
+  const laborDatasets = [
+    {{ label: 'Labor %', data: dailyData.map(d => d.labor_pct), borderColor: '#f59e0b', backgroundColor: '#f59e0b22', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#f59e0b' }},
+  ];
+  if (budgetCrewLine.length > 0) {{
+    laborDatasets.push({{ label: 'Bgt Crew Wages %', data: budgetCrewLine, borderColor: '#ef444488', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, fill: false }});
+  }}
+  if (laborChartInstance) laborChartInstance.destroy();
+  laborChartInstance = new Chart(document.getElementById('laborChart'), {{
+    type: 'line',
+    data: {{
+      labels: labels,
+      datasets: laborDatasets,
+    }},
+    options: {{
+      responsive: true,
+      plugins: {{ legend: {{ labels: {{ color: '#94a3b8' }} }} }},
+      scales: {{
+        x: {{ ticks: {{ color: '#64748b', font: {{ size: 10 }} }}, grid: {{ color: '#1e293b' }} }},
+        y: {{ ticks: {{ color: '#64748b', callback: v => v + '%' }}, grid: {{ color: '#1e293b44' }}, suggestedMin: 15, suggestedMax: 45 }}
+      }}
+    }}
+  }});
+
+  // Store Scoreboard Table
+  const storeTable = document.getElementById('storeTable');
+  let tableHtml = `<thead><tr>
+    <th>Store</th>
+    <th class="right">Net Sales</th>
+    <th class="right">Budget (pro)</th>
+    <th class="right">vs Budget</th>
+    <th class="right">Prior Year</th>
+    <th class="right">SSS Growth</th>
+    <th class="right">Labor %</th>
+    <th class="right">Bgt Crew %</th>
+    <th class="right">Guests</th>
+    <th class="right">Avg Check</th>
+  </tr></thead><tbody>`;
+
+  D.store_order.forEach(num => {{
+    const s = D.stores[num];
+    if (!s) return;
+    const sssHtml = s.sss_growth != null ? fmtChange(s.sss_growth) : '<span class="neutral">N/A</span>';
+    const budgetVarHtml = s.budget_variance != null ? fmtChange(s.budget_variance) : '<span class="neutral">\u2014</span>';
+    const laborCls = s.labor_pct > 35 ? 'negative' : s.labor_pct > 30 ? 'neutral' : 'positive';
+    tableHtml += `<tr>
+      <td><strong>${{num}}</strong> ${{s.name}}</td>
+      <td class="right">${{fmt(s.net_sales)}}</td>
+      <td class="right" style="color:#94a3b8">${{fmt(s.budget_sales_prorated)}}</td>
+      <td class="right">${{budgetVarHtml}}</td>
+      <td class="right" style="color:#94a3b8">${{fmt(s.py_net_sales)}}</td>
+      <td class="right">${{sssHtml}}</td>
+      <td class="right"><span class="${{laborCls}}">${{fmtPct(s.labor_pct)}}</span></td>
+      <td class="right" style="color:#94a3b8">${{fmtPct(s.budget_crew_wages_pct)}}</td>
+      <td class="right">${{s.guests.toLocaleString()}}</td>
+      <td class="right">${{fmt(s.avg_check)}}</td>
+    </tr>`;
+  }});
+
+  // Total row
+  const aBudgetVarHtml = a.budget_variance != null ? fmtChange(a.budget_variance) : '<span class="neutral">\u2014</span>';
+  tableHtml += `<tr class="total-row">
+    <td><strong>ALL STORES</strong></td>
+    <td class="right">${{fmt(a.net_sales)}}</td>
+    <td class="right" style="color:#94a3b8">${{fmt(a.budget_sales_prorated)}}</td>
+    <td class="right">${{aBudgetVarHtml}}</td>
+    <td class="right" style="color:#94a3b8">${{fmt(a.py_net_sales)}}</td>
+    <td class="right">${{a.sss_growth != null ? fmtChange(a.sss_growth) : '<span class="neutral">N/A</span>'}}</td>
+    <td class="right">${{fmtPct(a.labor_pct)}}</td>
+    <td class="right" style="color:#94a3b8">${{fmtPct(a.budget_crew_wages_pct)}}</td>
+    <td class="right">${{a.guests.toLocaleString()}}</td>
+    <td class="right">${{fmt(a.avg_check)}}</td>
+  </tr>`;
+  tableHtml += '</tbody>';
+  storeTable.innerHTML = tableHtml;
+
+  // Daily Detail Tabs
+  const tabBar = document.getElementById('tabBar');
+  const tabContents = document.getElementById('tabContents');
+  tabBar.innerHTML = '';
+  tabContents.innerHTML = '';
+
+  // Add "All Stores" tab first
+  const allBtn = document.createElement('div');
+  allBtn.className = 'tab-btn active';
+  allBtn.textContent = 'All Stores';
+  allBtn.onclick = function() {{ switchTab('all', this); }};
+  tabBar.appendChild(allBtn);
+
+  D.store_order.forEach(num => {{
+    const s = D.stores[num];
+    if (!s) return;
+    const btn = document.createElement('div');
+    btn.className = 'tab-btn';
+    btn.textContent = num + ' ' + s.name;
+    btn.onclick = function() {{ switchTab(num, this); }};
+    tabBar.appendChild(btn);
+  }});
+
+  // Build tab content for all stores
+  const allDiv = document.createElement('div');
+  allDiv.className = 'tab-content active';
+  allDiv.id = 'tab-all';
+  allDiv.innerHTML = buildDailyTable(a.daily || []);
+  tabContents.appendChild(allDiv);
+
+  D.store_order.forEach(num => {{
+    const s = D.stores[num];
+    if (!s) return;
+    const div = document.createElement('div');
+    div.className = 'tab-content';
+    div.id = 'tab-' + num;
+    div.innerHTML = buildDailyTable(s.daily || []);
+    tabContents.appendChild(div);
+  }});
+}}
+
+function switchTab(id, btn) {{
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
+  btn.classList.add('active');
   document.getElementById('tab-' + id).classList.add('active');
 }}
+
+function switchPeriod(key) {{
+  D = PERIODS[key];
+  renderDashboard(D);
+}}
+
+// Initial render
+renderDashboard(D);
 </script>
 </body>
 </html>'''

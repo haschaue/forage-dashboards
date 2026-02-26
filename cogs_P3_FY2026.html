@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forage Kitchen - Weekly COGS Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 20px 30px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #f8fafc; }
+  .header h1 span { color: #3b82f6; }
+  .header .meta { text-align: right; font-size: 13px; color: #94a3b8; }
+  .header .meta .period { font-size: 16px; color: #f8fafc; font-weight: 600; }
+  .header .meta .source { font-size: 11px; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Period Selector */
+  .period-nav { display: flex; align-items: center; gap: 8px; margin-top: 6px; justify-content: flex-end; }
+  .period-nav label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .period-select { background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; padding: 5px 28px 5px 10px; font-size: 13px; font-weight: 500; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+  .period-select:hover { border-color: #3b82f6; background-color: #3d4f6e; }
+  .period-select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+  .period-select option { background: #1e293b; color: #f8fafc; }
+  .period-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px; }
+  .period-badge.closed { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+  .period-badge.current { background: #3b82f622; color: #3b82f6; border: 1px solid #3b82f644; }
+
+  .container { max-width: 1500px; margin: 0 auto; padding: 20px; }
+
+  /* KPI Cards */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .kpi-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; color: #f8fafc; }
+  .kpi-card .sub { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+  .kpi-card .change { font-size: 14px; font-weight: 600; margin-top: 4px; }
+  .positive { color: #22c55e; }
+  .negative { color: #ef4444; }
+  .neutral { color: #94a3b8; }
+  .warning { color: #f59e0b; }
+
+  /* Section headers */
+  .section-header { font-size: 18px; font-weight: 600; color: #f8fafc; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
+
+  /* GM Status Grid */
+  .gm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .gm-card { background: #1e293b; border-radius: 10px; padding: 14px 16px; border: 1px solid #334155; }
+  .gm-card .store-name { font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+  .gm-card .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
+  .gm-card .check-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .check-done { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+  .check-missing { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+  .check-partial { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b44; }
+
+  /* Charts row */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Tables */
+  .store-table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+  .store-table th { background: #334155; padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 600; }
+  .store-table th.right, .store-table td.right { text-align: right; }
+  .store-table td { padding: 12px 16px; border-bottom: 1px solid #1e293b; font-size: 14px; }
+  .store-table tr:nth-child(even) { background: #1e293b; }
+  .store-table tr:nth-child(odd) { background: #172033; }
+  .store-table tr:hover { background: #253352; }
+  .store-table tr.total-row { background: #334155 !important; font-weight: 700; }
+  .store-table tr.total-row td { border-top: 2px solid #4a5568; }
+
+  /* Week tabs */
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn { padding: 8px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .tab-btn:hover { background: #253352; color: #f8fafc; }
+  .tab-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; font-weight: 700; }
+  .tab-btn .current { font-size: 10px; display: block; color: #93c5fd; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Vendor table */
+  .vendor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .vendor-card { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; }
+  .vendor-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .vendor-list { list-style: none; }
+  .vendor-list li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #253352; font-size: 13px; }
+  .vendor-list li .v-name { color: #e2e8f0; }
+  .vendor-list li .v-amt { color: #94a3b8; font-weight: 500; }
+
+  .refresh-notice { text-align: center; padding: 12px; color: #64748b; font-size: 12px; margin-top: 20px; }
+  .refresh-notice code { background: #334155; padding: 2px 8px; border-radius: 4px; color: #94a3b8; }
+
+  @media (max-width: 768px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .vendor-grid { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 10px; }
+    .header .meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Forage <span>Kitchen</span> &mdash; COGS Dashboard</h1>
+  <div class="meta">
+    <div class="period" id="periodLabel"></div>
+    <div id="dateRange"></div>
+    <div id="lastUpdated"></div>
+    <div class="source">Data: R365 Inventory + Invoices + Toast Sales</div>
+    <div class="period-nav">
+      <label>Period:</label>
+      <select id="periodSelect" class="period-select" onchange="switchPeriod(this.value)"></select>
+      <span id="periodBadge" class="period-badge"></span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <!-- GM Sign-Off Status -->
+  <div class="section-header">GM Weekly Sign-Off Status</div>
+  <div class="gm-grid" id="gmGrid"></div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Weekly R365 Purchases % vs Budget</h3>
+      <canvas id="cogsPctChart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>R365 Invoice Breakdown (Period to Date)</h3>
+      <canvas id="cogsBreakdownChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Store Scoreboard -->
+  <div class="section-header">Store Scoreboard &mdash; Period to Date</div>
+  <table class="store-table" id="storeTable"></table>
+
+  <!-- Weekly Detail Tabs -->
+  <div class="section-header">Weekly Detail</div>
+  <div class="tab-bar" id="weekTabBar"></div>
+  <div id="weekTabContents"></div>
+
+  <!-- Top Vendors -->
+  <div class="section-header">Top Vendors &mdash; Period to Date</div>
+  <div class="vendor-grid" id="vendorGrid"></div>
+
+  <div class="refresh-notice">
+    Run <code>py cogs_dashboard.py</code> to update current period &bull;
+    Run <code>py cogs_dashboard.py P2</code> for a specific period &bull;
+    GMs: Inventory counts + invoice approval due by <strong>Wednesday 8am</strong> &bull;
+    Generated <span id="refreshTime"></span>
+  </div>
+</div>
+
+<script>
+const D = {"generated": "2026-02-25T15:15:20.384560", "fiscal_year": 2026, "period": 3, "period_start": "2026-02-25", "period_end": "2026-03-31", "today": "2026-02-25", "current_week_start": "2026-02-25", "current_week_end": "2026-03-03", "weeks": [{"week_num": 1, "start": "2026-02-25", "end": "2026-03-03", "is_current": true, "is_past": false, "stores": {"8001": {"name": "State Street", "net_sales": 0, "purchases_food": 181.44, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 181.44, "credits": 0, "waste": 0, "net_purchases": 181.44, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 1, "invoices_approved": 1, "invoices_unapproved": 0, "top_vendors": [{"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}], "waste_items": []}, "8002": {"name": "Hilldale", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 21.17, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": [{"item": "PREPPED FOOD - DICED CHICKEN THIGH", "qty": 3.8, "uom": "LB", "amount": 9.24}, {"item": "PREPPED FOOD- ROASTED BROCCOLI, CARROT,  CAULIFLOWER", "qty": 1.0, "uom": "LB", "amount": 3.04}, {"item": "PREPPED FOOD- MEATBALLS 1.25", "qty": 5.0, "uom": "Each", "amount": 3.02}, {"item": "PREPPED FOOD- COOKED RICE", "qty": 1.6, "uom": "1 QT (18 OZ)", "amount": 2.55}, {"item": "PRODUCE - AVOCADOS HASS", "qty": 2.0, "uom": "Each", "amount": 1.31}, {"item": "PRODUCE - SPINACH", "qty": 0.3, "uom": "LB", "amount": 1.26}, {"item": "PRODUCE - SPRING MIX SALAD", "qty": 0.2, "uom": "LB", "amount": 0.6}, {"item": "PREPPED FOOD- LENTIL MEATBALLS", "qty": 0.25, "uom": "LB", "amount": 0.15}]}, "8003": {"name": "Monona", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8004": {"name": "Old Sauk", "net_sales": 0, "purchases_food": 1135.01, "purchases_packaging": 0, "purchases_beverage": 189.1, "purchases_other": 0, "purchases_total": 1324.11, "credits": 0, "waste": 0, "net_purchases": 1324.11, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 35, "invoices_approved": 0, "invoices_unapproved": 35, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 1354.06}], "waste_items": []}, "8005": {"name": "Champaign", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8006": {"name": "Whitefish Bay", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8007": {"name": "Sun Prairie", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8008": {"name": "Pewaukee", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8009": {"name": "MKE Public Market", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 24.0, "purchases_other": 0, "purchases_total": 24.0, "credits": 0, "waste": 0, "net_purchases": 24.0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 1, "invoices_approved": 1, "invoices_unapproved": 0, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 24.0}], "waste_items": []}, "8010": {"name": "Brookfield", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}}, "totals": {"net_sales": 0, "purchases_food": 1316.45, "purchases_packaging": 0, "purchases_beverage": 213.1, "purchases_total": 1529.55, "credits": 0, "waste": 21.17, "net_purchases": 1529.55, "cogs_pct": 0}}, {"week_num": 2, "start": "2026-03-04", "end": "2026-03-10", "is_current": false, "is_past": false, "stores": {"8001": {"name": "State Street", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8002": {"name": "Hilldale", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8003": {"name": "Monona", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8004": {"name": "Old Sauk", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8005": {"name": "Champaign", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8006": {"name": "Whitefish Bay", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8007": {"name": "Sun Prairie", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8008": {"name": "Pewaukee", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8009": {"name": "MKE Public Market", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8010": {"name": "Brookfield", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}}, "totals": {"net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0}}, {"week_num": 3, "start": "2026-03-11", "end": "2026-03-17", "is_current": false, "is_past": false, "stores": {"8001": {"name": "State Street", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8002": {"name": "Hilldale", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8003": {"name": "Monona", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8004": {"name": "Old Sauk", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8005": {"name": "Champaign", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8006": {"name": "Whitefish Bay", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8007": {"name": "Sun Prairie", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8008": {"name": "Pewaukee", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8009": {"name": "MKE Public Market", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8010": {"name": "Brookfield", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}}, "totals": {"net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0}}, {"week_num": 4, "start": "2026-03-18", "end": "2026-03-24", "is_current": false, "is_past": false, "stores": {"8001": {"name": "State Street", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8002": {"name": "Hilldale", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8003": {"name": "Monona", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8004": {"name": "Old Sauk", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8005": {"name": "Champaign", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8006": {"name": "Whitefish Bay", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8007": {"name": "Sun Prairie", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8008": {"name": "Pewaukee", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8009": {"name": "MKE Public Market", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8010": {"name": "Brookfield", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}}, "totals": {"net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0}}, {"week_num": 5, "start": "2026-03-25", "end": "2026-03-31", "is_current": false, "is_past": false, "stores": {"8001": {"name": "State Street", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8002": {"name": "Hilldale", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8003": {"name": "Monona", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8004": {"name": "Old Sauk", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8005": {"name": "Champaign", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8006": {"name": "Whitefish Bay", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8007": {"name": "Sun Prairie", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8008": {"name": "Pewaukee", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8009": {"name": "MKE Public Market", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}, "8010": {"name": "Brookfield", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "has_stock_count": false, "stock_count_date": null, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "top_vendors": [], "waste_items": []}}, "totals": {"net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0}}], "period_stores": {"8001": {"name": "State Street", "net_sales": 0, "purchases_food": 181.44, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 181.44, "credits": 0, "waste": 0, "net_purchases": 181.44, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 33242.99, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 1, "invoices_approved": 1, "top_vendors": [{"name": "BANDUNG INDONESIAN RESTAURANT", "amount": 181.44}], "begin_inventory": 8080.14, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8002": {"name": "Hilldale", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 21.17, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 30.9, "budget_cogs": 41636.67, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 6436.01, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8003": {"name": "Monona", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 40400.57, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 7761.04, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8004": {"name": "Old Sauk", "net_sales": 0, "purchases_food": 1135.01, "purchases_packaging": 0, "purchases_beverage": 189.1, "purchases_other": 0, "purchases_total": 1324.11, "credits": 0, "waste": 0, "net_purchases": 1324.11, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 38744.63, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 35, "invoices_approved": 0, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 1354.06}], "begin_inventory": 5344.36, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8005": {"name": "Champaign", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 24670.0, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 6455.17, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8006": {"name": "Whitefish Bay", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 33168.19, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 6760.43, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8007": {"name": "Sun Prairie", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 40883.8, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 6367.57, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8008": {"name": "Pewaukee", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 22027.37, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 4655.16, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8009": {"name": "MKE Public Market", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 24.0, "purchases_other": 0, "purchases_total": 24.0, "credits": 0, "waste": 0, "net_purchases": 24.0, "cogs_pct": 0, "budget_cogs_pct": 30.7, "budget_cogs": 27098.71, "has_stock_count": false, "has_begin_inv": true, "invoices_total": 1, "invoices_approved": 1, "top_vendors": [{"name": "V. MARCHESE INC.", "amount": 24.0}], "begin_inventory": 5288.27, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "8010": {"name": "Brookfield", "net_sales": 0, "purchases_food": 0, "purchases_packaging": 0, "purchases_beverage": 0, "purchases_other": 0, "purchases_total": 0, "credits": 0, "waste": 0, "net_purchases": 0, "cogs_pct": 0, "budget_cogs_pct": 0, "budget_cogs": 0.0, "has_stock_count": false, "has_begin_inv": false, "invoices_total": 0, "invoices_approved": 0, "top_vendors": [], "begin_inventory": 0, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}}, "period_totals": {"net_sales": 0, "purchases_food": 1316.45, "purchases_packaging": 0, "purchases_beverage": 213.1, "purchases_total": 1529.55, "credits": 0, "waste": 21.17, "net_purchases": 1529.55, "cogs_pct": 0, "budget_cogs_pct": 30.7, "begin_inventory": 57148.15, "end_inventory": 0, "inv_cogs": 0, "inv_cogs_pct": 0}, "gm_status": {"8001": {"name": "State Street", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 1, "invoices_approved": 1, "invoices_unapproved": 0, "all_approved": true}, "8002": {"name": "Hilldale", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}, "8003": {"name": "Monona", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}, "8004": {"name": "Old Sauk", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 35, "invoices_approved": 0, "invoices_unapproved": 35, "all_approved": false}, "8005": {"name": "Champaign", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}, "8006": {"name": "Whitefish Bay", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}, "8007": {"name": "Sun Prairie", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}, "8008": {"name": "Pewaukee", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}, "8009": {"name": "MKE Public Market", "inventory_done": false, "stock_count_date": null, "begin_inv_done": true, "invoices_total": 1, "invoices_approved": 1, "invoices_unapproved": 0, "all_approved": true}, "8010": {"name": "Brookfield", "inventory_done": false, "stock_count_date": null, "begin_inv_done": false, "invoices_total": 0, "invoices_approved": 0, "invoices_unapproved": 0, "all_approved": false}}, "store_order": ["8001", "8002", "8003", "8004", "8005", "8006", "8007", "8008", "8009", "8010"], "has_budget": true, "available_periods": [{"period": 2, "fy": 2026, "file": "cogs_P2_FY2026.html"}, {"period": 3, "fy": 2026, "file": "cogs_P3_FY2026.html"}], "current_file": "cogs_P3_FY2026.html"};
+
+const fmt = (n) => n == null ? '\u2014' : '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+const fmtPct = (n) => n == null ? '\u2014' : n.toFixed(1) + '%';
+const fmtChange = (n) => {
+  if (n == null) return '<span class="neutral">N/A</span>';
+  const cls = n >= 0 ? 'positive' : 'negative';
+  const sign = n >= 0 ? '+' : '';
+  return `<span class="${cls}">${sign}${n.toFixed(1)}%</span>`;
+};
+const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const shortDate = (s) => {
+  const d = new Date(s + 'T12:00:00');
+  return (d.getMonth()+1) + '/' + d.getDate();
+};
+
+// Header
+document.getElementById('periodLabel').textContent = `FY${D.fiscal_year} Period ${D.period}`;
+document.getElementById('dateRange').textContent = `${D.period_start} to ${D.period_end}`;
+document.getElementById('lastUpdated').textContent = `Updated: ${new Date(D.generated).toLocaleString()}`;
+document.getElementById('refreshTime').textContent = new Date(D.generated).toLocaleString();
+
+// Period Selector
+const periodSelect = document.getElementById('periodSelect');
+const periodBadge = document.getElementById('periodBadge');
+const availablePeriods = D.available_periods || [];
+const currentFile = D.current_file || '';
+
+// Determine if current period is closed
+const periodEndDate = new Date(D.period_end + 'T23:59:59');
+const isClosed = periodEndDate < new Date();
+periodBadge.textContent = isClosed ? 'CLOSED' : 'LIVE';
+periodBadge.className = 'period-badge ' + (isClosed ? 'closed' : 'current');
+
+availablePeriods.forEach(ap => {
+  const opt = document.createElement('option');
+  opt.value = ap.file;
+  opt.textContent = `P${ap.period} FY${ap.fy}`;
+  if (ap.file === currentFile) opt.selected = true;
+  periodSelect.appendChild(opt);
+});
+
+function switchPeriod(file) {
+  if (file && file !== currentFile) {
+    window.location.href = file;
+  }
+}
+
+// KPI Cards - Inventory method COGS
+const pt = D.period_totals;
+const hasInvCogs = pt.inv_cogs !== 0 && pt.begin_inventory > 0;
+const invCogsPct = hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct;
+const budgetVar = pt.budget_cogs_pct > 0 ? invCogsPct - pt.budget_cogs_pct : null;
+const kpis = [
+  { label: 'COGS $', value: hasInvCogs ? fmt(pt.inv_cogs) : fmt(pt.net_purchases), sub: hasInvCogs ? 'Begin Inv + Purchases - End Inv' : 'R365 Purchases (no inv counts yet)', change: null },
+  { label: 'COGS %', value: fmtPct(invCogsPct), sub: 'Budget: ' + fmtPct(pt.budget_cogs_pct), highlight: budgetVar != null ? -budgetVar : null, change: budgetVar != null ? -budgetVar : null, changeLabel: 'vs Budget' },
+  { label: 'Net Sales', value: fmt(pt.net_sales), sub: 'Toast POS', change: null },
+  { label: 'Begin Inventory', value: fmt(pt.begin_inventory), sub: 'Prior period-end count', change: null },
+  { label: 'End Inventory', value: fmt(pt.end_inventory), sub: 'Current period-end count', change: null },
+  { label: 'R365 Purchases', value: fmt(pt.net_purchases), sub: 'Invoices - Credits (R365 OData)', change: null },
+];
+
+const kpiRow = document.getElementById('kpiRow');
+kpis.forEach(k => {
+  const card = document.createElement('div');
+  card.className = 'kpi-card';
+  let changeHtml = '';
+  if (k.change != null) {
+    const cls = k.change >= 0 ? 'positive' : 'negative';
+    const sign = k.change >= 0 ? '+' : '';
+    changeHtml = `<div class="change ${cls}">${sign}${k.change.toFixed(1)}% ${k.changeLabel || ''}</div>`;
+  }
+  let valueColor = '';
+  if (k.highlight != null) {
+    valueColor = k.highlight >= 0 ? 'color:#22c55e' : 'color:#ef4444';
+  }
+  card.innerHTML = `<div class="label">${k.label}</div><div class="value" style="${valueColor}">${k.value}</div><div class="sub">${k.sub}</div>${changeHtml}`;
+  kpiRow.appendChild(card);
+});
+
+// GM Sign-Off Status
+const gmGrid = document.getElementById('gmGrid');
+D.store_order.forEach(sn => {
+  const gm = D.gm_status[sn];
+  if (!gm) return;
+  const card = document.createElement('div');
+  card.className = 'gm-card';
+
+  const invIcon = gm.all_approved ? 'check-done' : (gm.invoices_approved > 0 ? 'check-partial' : 'check-missing');
+  const invSymbol = gm.all_approved ? '\u2713' : (gm.invoices_approved > 0 ? '!' : '\u2717');
+  const invText = gm.invoices_total > 0
+    ? `${gm.invoices_approved}/${gm.invoices_total} approved` + (gm.invoices_unapproved > 0 ? ` (${gm.invoices_unapproved} pending)` : '')
+    : 'No invoices this week';
+
+  const beginIcon = gm.begin_inv_done ? 'check-done' : 'check-missing';
+  const beginSymbol = gm.begin_inv_done ? '\u2713' : '\u2717';
+  const beginText = gm.begin_inv_done ? 'Found' : 'Missing';
+
+  const countIcon = gm.inventory_done ? 'check-done' : 'check-missing';
+  const countSymbol = gm.inventory_done ? '\u2713' : '\u2717';
+  const countText = gm.inventory_done
+    ? `Completed ${gm.stock_count_date || ''}`
+    : 'Not yet completed';
+
+  card.innerHTML = `
+    <div class="store-name">${sn} ${gm.name}</div>
+    <div class="check-row">
+      <div class="check-icon ${beginIcon}">${beginSymbol}</div>
+      <div>Beginning Inv Count: ${beginText}</div>
+    </div>
+    <div class="check-row">
+      <div class="check-icon ${countIcon}">${countSymbol}</div>
+      <div>Ending Inv Count: ${countText}</div>
+    </div>
+    <div class="check-row">
+      <div class="check-icon ${invIcon}">${invSymbol}</div>
+      <div>Invoices: ${invText}</div>
+    </div>
+  `;
+  gmGrid.appendChild(card);
+});
+
+// COGS % by Week Chart
+const weekLabels = D.weeks.map(w => 'Wk' + w.week_num + ' (' + shortDate(w.start) + ')');
+const weekR365CogsPct = D.weeks.map(w => w.totals.cogs_pct);
+const budgetLine = D.period_totals.budget_cogs_pct > 0 ? D.weeks.map(() => D.period_totals.budget_cogs_pct) : [];
+
+const cogsPctDatasets = [
+  { label: 'Weekly Purchases %', data: weekR365CogsPct, backgroundColor: '#3b82f688', borderColor: '#3b82f6', borderWidth: 2, type: 'bar' },
+];
+if (budgetLine.length > 0) {
+  cogsPctDatasets.push({ label: 'Budget COGS %', data: budgetLine, borderColor: '#ef444488', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, type: 'line' });
+}
+
+new Chart(document.getElementById('cogsPctChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: cogsPctDatasets },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#94a3b8' } } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+      y: { ticks: { color: '#64748b', callback: v => v + '%' }, grid: { color: '#1e293b44' }, suggestedMin: 20, suggestedMax: 40 }
+    }
+  }
+});
+
+// COGS Breakdown Donut - R365 invoice categories (what we can see)
+new Chart(document.getElementById('cogsBreakdownChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Food', 'Packaging', 'Beverage', 'Waste'],
+    datasets: [{
+      data: [pt.purchases_food, pt.purchases_packaging, pt.purchases_beverage, pt.waste],
+      backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e', '#ef4444'],
+      borderColor: '#0f172a',
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 16 } },
+    }
+  }
+});
+
+// Store Scoreboard Table - Inventory method COGS
+const storeTable = document.getElementById('storeTable');
+let tableHtml = `<thead><tr>
+  <th>Store</th>
+  <th class="right">Net Sales</th>
+  <th class="right">Begin Inv</th>
+  <th class="right">Purchases</th>
+  <th class="right">End Inv</th>
+  <th class="right">COGS $</th>
+  <th class="right">COGS %</th>
+  <th class="right">Budget %</th>
+  <th class="right">Variance</th>
+  <th class="right">Waste</th>
+</tr></thead><tbody>`;
+
+D.store_order.forEach(sn => {
+  const s = D.period_stores[sn];
+  if (!s) return;
+  // Use inv_cogs if available, otherwise fall back to net_purchases
+  const hasCogs = s.has_begin_inv && s.has_stock_count;
+  const cogsVal = hasCogs ? s.inv_cogs : s.net_purchases;
+  const cogsPct = hasCogs ? s.inv_cogs_pct : s.cogs_pct;
+  const bVar = s.budget_cogs_pct > 0 ? cogsPct - s.budget_cogs_pct : null;
+  const varHtml = bVar != null
+    ? `<span class="${bVar <= 0 ? 'positive' : 'negative'}">${bVar > 0 ? '+' : ''}${bVar.toFixed(1)}%</span>`
+    : '<span class="neutral">\u2014</span>';
+  const cogsCls = cogsPct > 35 ? 'negative' : cogsPct > 32 ? 'warning' : 'positive';
+  const biHtml = s.has_begin_inv ? fmt(s.begin_inventory) : '<span class="neutral">\u2014</span>';
+  const eiHtml = s.has_stock_count ? fmt(s.end_inventory) : '<span class="neutral">\u2014</span>';
+
+  tableHtml += `<tr>
+    <td><strong>${sn}</strong> ${s.name}</td>
+    <td class="right">${fmt(s.net_sales)}</td>
+    <td class="right" style="color:#94a3b8">${biHtml}</td>
+    <td class="right">${fmt(s.net_purchases)}</td>
+    <td class="right" style="color:#94a3b8">${eiHtml}</td>
+    <td class="right">${fmt(cogsVal)}</td>
+    <td class="right"><span class="${cogsCls}">${fmtPct(cogsPct)}</span></td>
+    <td class="right" style="color:#94a3b8">${fmtPct(s.budget_cogs_pct)}</td>
+    <td class="right">${varHtml}</td>
+    <td class="right" style="color:#f59e0b">${fmt(s.waste)}</td>
+  </tr>`;
+});
+
+// Total row
+const totalCogsPct = hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct;
+const totalBudgetVar = pt.budget_cogs_pct > 0 ? totalCogsPct - pt.budget_cogs_pct : null;
+const totalVarHtml = totalBudgetVar != null
+  ? `<span class="${totalBudgetVar <= 0 ? 'positive' : 'negative'}">${totalBudgetVar > 0 ? '+' : ''}${totalBudgetVar.toFixed(1)}%</span>`
+  : '<span class="neutral">\u2014</span>';
+tableHtml += `<tr class="total-row">
+  <td><strong>ALL STORES</strong></td>
+  <td class="right">${fmt(pt.net_sales)}</td>
+  <td class="right" style="color:#94a3b8">${fmt(pt.begin_inventory)}</td>
+  <td class="right">${fmt(pt.net_purchases)}</td>
+  <td class="right" style="color:#94a3b8">${fmt(pt.end_inventory)}</td>
+  <td class="right">${hasInvCogs ? fmt(pt.inv_cogs) : fmt(pt.net_purchases)}</td>
+  <td class="right">${fmtPct(totalCogsPct)}</td>
+  <td class="right" style="color:#94a3b8">${fmtPct(pt.budget_cogs_pct)}</td>
+  <td class="right">${totalVarHtml}</td>
+  <td class="right" style="color:#f59e0b">${fmt(pt.waste)}</td>
+</tr>`;
+tableHtml += '</tbody>';
+storeTable.innerHTML = tableHtml;
+
+// Weekly Detail Tabs
+const weekTabBar = document.getElementById('weekTabBar');
+const weekTabContents = document.getElementById('weekTabContents');
+
+D.weeks.forEach((w, i) => {
+  const btn = document.createElement('div');
+  btn.className = 'tab-btn' + (w.is_current ? ' active' : '');
+  btn.innerHTML = `Wk${w.week_num} (${shortDate(w.start)}-${shortDate(w.end)})${w.is_current ? '<span class="current">Current</span>' : ''}`;
+  btn.onclick = (e) => switchWeekTab(i, e.target.closest('.tab-btn'));
+  weekTabBar.appendChild(btn);
+
+  const div = document.createElement('div');
+  div.className = 'tab-content' + (w.is_current ? ' active' : '');
+  div.id = 'week-tab-' + i;
+  div.innerHTML = buildWeekTable(w);
+  weekTabContents.appendChild(div);
+});
+
+function buildWeekTable(w) {
+  let html = `<table class="store-table"><thead><tr>
+    <th>Store</th>
+    <th class="right">Net Sales</th>
+    <th class="right">Food</th>
+    <th class="right">Pkg</th>
+    <th class="right">Bev</th>
+    <th class="right">Purchases</th>
+    <th class="right">Credits</th>
+    <th class="right">Net COGS</th>
+    <th class="right">COGS %</th>
+    <th class="right">Waste</th>
+    <th class="right">Inv Count</th>
+  </tr></thead><tbody>`;
+
+  D.store_order.forEach(sn => {
+    const s = w.stores[sn];
+    if (!s) return;
+    const cogsCls = s.cogs_pct > 35 ? 'negative' : s.cogs_pct > 32 ? 'warning' : 'positive';
+    const countHtml = s.has_stock_count
+      ? `<span class="positive">\u2713 ${s.stock_count_date ? s.stock_count_date.slice(5) : ''}</span>`
+      : '<span class="negative">\u2717</span>';
+
+    html += `<tr>
+      <td><strong>${sn}</strong> ${s.name}</td>
+      <td class="right">${fmt(s.net_sales)}</td>
+      <td class="right">${fmt(s.purchases_food)}</td>
+      <td class="right">${fmt(s.purchases_packaging)}</td>
+      <td class="right">${fmt(s.purchases_beverage)}</td>
+      <td class="right">${fmt(s.purchases_total)}</td>
+      <td class="right" style="color:#94a3b8">${fmt(s.credits)}</td>
+      <td class="right">${fmt(s.net_purchases)}</td>
+      <td class="right"><span class="${cogsCls}">${fmtPct(s.cogs_pct)}</span></td>
+      <td class="right" style="color:#f59e0b">${fmt(s.waste)}</td>
+      <td class="right">${countHtml}</td>
+    </tr>`;
+  });
+
+  // Week total row
+  const t = w.totals;
+  html += `<tr class="total-row">
+    <td><strong>TOTAL</strong></td>
+    <td class="right">${fmt(t.net_sales)}</td>
+    <td class="right">${fmt(t.purchases_food)}</td>
+    <td class="right">${fmt(t.purchases_packaging)}</td>
+    <td class="right">${fmt(t.purchases_beverage)}</td>
+    <td class="right">${fmt(t.purchases_total)}</td>
+    <td class="right" style="color:#94a3b8">${fmt(t.credits)}</td>
+    <td class="right">${fmt(t.net_purchases)}</td>
+    <td class="right">${fmtPct(t.cogs_pct)}</td>
+    <td class="right" style="color:#f59e0b">${fmt(t.waste)}</td>
+    <td class="right">\u2014</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function switchWeekTab(idx, btn) {
+  document.querySelectorAll('#weekTabBar .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#weekTabContents .tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('week-tab-' + idx).classList.add('active');
+}
+
+// Top Vendors (period totals, split into two columns)
+const vendorGrid = document.getElementById('vendorGrid');
+const allVendors = {};
+D.store_order.forEach(sn => {
+  const s = D.period_stores[sn];
+  if (!s) return;
+  s.top_vendors.forEach(v => {
+    allVendors[v.name] = (allVendors[v.name] || 0) + v.amount;
+  });
+});
+const sortedVendors = Object.entries(allVendors).sort((a,b) => b[1] - a[1]);
+const half = Math.ceil(sortedVendors.length / 2);
+[sortedVendors.slice(0, half), sortedVendors.slice(half)].forEach((chunk, ci) => {
+  if (chunk.length === 0) return;
+  const card = document.createElement('div');
+  card.className = 'vendor-card';
+  let html = `<h3>${ci === 0 ? 'Top Vendors' : 'More Vendors'}</h3><ul class="vendor-list">`;
+  chunk.forEach(([name, amt]) => {
+    html += `<li><span class="v-name">${name}</span><span class="v-amt">${fmt(amt)}</span></li>`;
+  });
+  html += '</ul>';
+  card.innerHTML = html;
+  vendorGrid.appendChild(card);
+});
+</script>
+</body>
+</html>

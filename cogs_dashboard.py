@@ -283,21 +283,31 @@ def load_r365_reference():
 def pull_transactions_for_period(period_start, period_end):
     """Pull all COGS-related transactions for a fiscal period from R365.
     R365 requires date filters with max 31-day range, so we chunk by month.
+    Stock Counts get +1 day grace period since GMs sometimes complete
+    period-end counts on Wednesday morning (day after period close).
     """
     all_transactions = []
     current = period_start
+    # Extend pull window by 1 day for stock counts entered morning after close
+    pull_end = period_end + timedelta(days=1)
 
-    while current <= period_end:
-        # Chunk end: up to 31 days or period end
-        chunk_end = min(current + timedelta(days=30), period_end)
+    while current <= pull_end:
+        # Chunk end: up to 31 days or pull end
+        chunk_end = min(current + timedelta(days=30), pull_end)
         start_str = current.strftime("%Y-%m-%dT00:00:00Z")
         end_str = chunk_end.strftime("%Y-%m-%dT23:59:59Z")
 
         for txn_type in COGS_TXN_TYPES:
+            # Only extend the grace day for Stock Counts
+            if txn_type != "Stock Count":
+                txn_end = min(chunk_end, period_end)
+                txn_end_str = txn_end.strftime("%Y-%m-%dT23:59:59Z")
+            else:
+                txn_end_str = end_str
             url = (f"{R365_BASE}/Transaction?$top=5000"
                    f"&$filter=type eq '{txn_type}'"
                    f" and date ge {start_str}"
-                   f" and date le {end_str}")
+                   f" and date le {txn_end_str}")
             try:
                 data = r365_fetch(url)
                 records = data.get("value", [])
@@ -392,9 +402,39 @@ def main():
     print("  " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)
 
-    # Determine current period and week
-    fy, period, period_start, period_end = get_current_period()
+    # Support targeting a specific period: python cogs_dashboard.py P2
+    # or: python cogs_dashboard.py 2  (just the number)
+    target_period = None
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].upper().replace("P", "")
+        try:
+            target_period = int(arg)
+        except ValueError:
+            print(f"  Usage: python cogs_dashboard.py [P#]  e.g. P2")
+            return
+
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if target_period:
+        # Find the requested period in the current or recent fiscal year
+        for fy_year in sorted(FISCAL_YEAR_STARTS.keys(), reverse=True):
+            periods = get_445_periods(FISCAL_YEAR_STARTS[fy_year])
+            if target_period <= len(periods):
+                p = periods[target_period - 1]
+                fy = fy_year
+                period = target_period
+                period_start = p["start"]
+                period_end = p["end"]
+                break
+        else:
+            print(f"  Error: Period {target_period} not found")
+            return
+        # For past periods, set "today" to period end so all data is included
+        if period_end < today:
+            today = period_end
+    else:
+        fy, period, period_start, period_end = get_current_period()
+
     yesterday = today - timedelta(days=1)
     current_week_start = get_week_start(today)
     current_week_end = current_week_start + timedelta(days=6)
@@ -402,10 +442,13 @@ def main():
     # All weeks in the period
     period_weeks = get_period_weeks(period_start, period_end)
 
-    print(f"\n  Current: FY{fy} Period {period}")
+    is_closed = period_end < datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    status = "CLOSED" if is_closed else "Current"
+    print(f"\n  {status}: FY{fy} Period {period}")
     print(f"  Period:  {period_start.strftime('%Y-%m-%d')} to {period_end.strftime('%Y-%m-%d')}")
-    print(f"  Current week: {current_week_start.strftime('%Y-%m-%d')} to {current_week_end.strftime('%Y-%m-%d')}")
-    print(f"  Today: {today.strftime('%Y-%m-%d')}")
+    if not is_closed:
+        print(f"  Current week: {current_week_start.strftime('%Y-%m-%d')} to {current_week_end.strftime('%Y-%m-%d')}")
+    print(f"  Data through: {today.strftime('%Y-%m-%d')}")
     print(f"  Weeks in period: {len(period_weeks)}")
 
     cache_key = f"FY{fy}_P{period}"
@@ -439,6 +482,34 @@ def main():
 
     for txn_type, txns in sorted(txn_by_type.items()):
         print(f"    {txn_type}: {len(txns)} transactions")
+
+    # Pull beginning inventory - stock counts from prior period end
+    # GMs do period-end counts on the last day (Tue) or morning after (Wed)
+    begin_inv_start = period_start - timedelta(days=3)
+    begin_inv_end = period_start  # include period start for grace
+    print(f"\n  Pulling beginning inventory counts "
+          f"({begin_inv_start.strftime('%m/%d')} - {begin_inv_end.strftime('%m/%d')})...")
+    begin_inv_url = (
+        f"{R365_BASE}/Transaction?$top=5000"
+        f"&$filter=type eq 'Stock Count'"
+        f" and date ge {begin_inv_start.strftime('%Y-%m-%dT00:00:00Z')}"
+        f" and date le {begin_inv_end.strftime('%Y-%m-%dT23:59:59Z')}"
+    )
+    try:
+        begin_inv_data = r365_fetch(begin_inv_url)
+        begin_inv_txns = begin_inv_data.get("value", [])
+    except Exception as e:
+        begin_inv_txns = []
+        print(f"    Error: {e}")
+
+    begin_inv_txn_ids = set(t["transactionId"] for t in begin_inv_txns)
+    print(f"    {len(begin_inv_txns)} beginning inventory stock counts found")
+
+    # Add beginning inventory txns to main list for detail pull
+    existing_ids = {t["transactionId"] for t in transactions}
+    for t in begin_inv_txns:
+        if t["transactionId"] not in existing_ids:
+            transactions.append(t)
 
     # --------------------------------------------------------
     # Step 3: Pull transaction details
@@ -493,9 +564,45 @@ def main():
                 return i
         return None
 
-    # Process each transaction detail
+    # First pass: process beginning inventory stock counts (prior period end)
+    begin_inventory = defaultdict(float)  # {store_num: total $}
     for td in details:
         txn_id = td.get("transactionId", "")
+        if txn_id not in begin_inv_txn_ids:
+            continue
+        txn = txn_lookup.get(txn_id)
+        if not txn:
+            continue
+        row_type = td.get("rowType", "")
+        if row_type != "Detail":
+            continue
+        loc_id = td.get("locationId") or txn.get("locationId", "")
+        store_num = loc_id_to_num.get(loc_id, "Unknown")
+        if store_num == "Unknown" or store_num not in STORE_NAMES:
+            continue
+        gl_id = td.get("glAccountId", "")
+        gl_info = gl_map.get(gl_id, {})
+        gl_num = gl_info.get("number", "")
+        if not gl_num.startswith("5"):
+            continue
+        amount = td.get("amount", 0) or 0
+        begin_inventory[store_num] += amount
+
+    if begin_inventory:
+        print(f"\n  Beginning inventory (prior period-end counts):")
+        for sn in sorted(begin_inventory.keys()):
+            print(f"    {sn} {STORE_NAMES.get(sn, '')}: ${begin_inventory[sn]:,.2f}")
+        print(f"    TOTAL: ${sum(begin_inventory.values()):,.2f}")
+    else:
+        print(f"\n  No beginning inventory counts found")
+
+    # Second pass: process period transactions (skip beginning inventory)
+    _grace_logged = set()  # Track which grace-period stock counts we've already logged
+    for td in details:
+        txn_id = td.get("transactionId", "")
+        # Skip beginning inventory transactions
+        if txn_id in begin_inv_txn_ids:
+            continue
         txn = txn_lookup.get(txn_id)
         if not txn:
             continue
@@ -509,6 +616,15 @@ def main():
             continue
 
         week_idx = date_to_week_idx(txn_date)
+        # Stock Counts get 1-day grace: if dated day after period end,
+        # assign to last week (GMs sometimes complete counts Wed morning)
+        if week_idx is None and txn_type == "Stock Count":
+            grace_end = period_end + timedelta(days=1)
+            if txn_date.date() == grace_end.date():
+                week_idx = len(period_weeks) - 1
+                if txn_id not in _grace_logged:
+                    _grace_logged.add(txn_id)
+                    print(f"    Note: Stock Count dated {txn_date_str[:10]} (day after period end) -> assigned to Week {week_idx + 1}")
         if week_idx is None:
             continue
 
@@ -600,20 +716,34 @@ def main():
         for sn in week_data[wi]:
             wd = week_data[wi][sn]
             wd["net_purchases"] = wd["purchases_total"] - wd["credits"]
-            # Inventory method: COGS = Begin Inv - End Inv + Purchases
-            # The inventory change tells us consumption from shelf
-            if wd["has_stock_count"] and wd["inventory_begin"] > 0:
-                wd["inv_cogs"] = wd["inventory_begin"] - wd["inventory_end"] + wd["net_purchases"]
-            else:
-                wd["inv_cogs"] = 0  # Can't calculate without stock count
-    for sn in period_data:
-        pd = period_data[sn]
-        pd["net_purchases"] = pd["purchases_total"] - pd["credits"]
-        # Period-level inventory COGS
-        if pd["has_stock_count"] and pd["inventory_begin"] > 0:
-            pd["inv_cogs"] = pd["inventory_begin"] - pd["inventory_end"] + pd["net_purchases"]
+    # Use all known stores (not just period_data keys) so stores with beginning
+    # inventory but no period transactions yet still get their BI assigned
+    all_stores = set(period_data.keys()) | set(begin_inventory.keys()) | set(STORE_NAMES.keys())
+    for sn in all_stores:
+        pd_store = period_data[sn]  # defaultdict creates entry if needed
+        pd_store["net_purchases"] = pd_store["purchases_total"] - pd_store["credits"]
+        # Period COGS = Beginning Inventory + Net Purchases - Ending Inventory
+        bi = begin_inventory.get(sn, 0)
+        ei = pd_store["inventory_end"]  # from period-end stock counts
+        np = pd_store["net_purchases"]
+        pd_store["begin_inventory"] = bi
+        if bi > 0 and ei > 0:
+            pd_store["inv_cogs"] = bi + np - ei
         else:
-            pd["inv_cogs"] = 0
+            pd_store["inv_cogs"] = 0
+
+    # Print COGS summary
+    if any(period_data[sn].get("inv_cogs", 0) != 0 for sn in period_data):
+        print(f"\n  COGS = Beginning Inv + Purchases - Ending Inv:")
+        for sn in sorted(period_data.keys()):
+            pd_store = period_data[sn]
+            bi = pd_store.get("begin_inventory", 0)
+            ei = pd_store.get("inventory_end", 0)
+            np = pd_store.get("net_purchases", 0)
+            cogs = pd_store.get("inv_cogs", 0)
+            if bi > 0 or ei > 0:
+                print(f"    {sn} {STORE_NAMES.get(sn, '')}: "
+                      f"${bi:,.0f} + ${np:,.0f} - ${ei:,.0f} = ${cogs:,.0f}")
 
     # --------------------------------------------------------
     # Step 5: Pull Toast sales for COGS % calculation
@@ -663,14 +793,6 @@ def main():
             # Convert vendors dict to serializable list
             top_vendors = sorted(wd["vendors"].items(), key=lambda x: -x[1])[:10]
 
-            # Use inventory-method COGS if available, otherwise AP invoice-based
-            inv_cogs = wd.get("inv_cogs", 0)
-            inv_cogs_pct = round(inv_cogs / ns * 100, 1) if ns > 0 and inv_cogs > 0 else 0
-
-            # Estimated COGS using coverage factor
-            est_cogs = round(wd["net_purchases"] * COGS_COVERAGE_FACTOR, 2)
-            est_cogs_pct = round(est_cogs / ns * 100, 1) if ns > 0 else 0
-
             week_stores[sn] = {
                 "name": STORE_NAMES.get(sn, sn),
                 "net_sales": round(ns, 2),
@@ -690,13 +812,6 @@ def main():
                 "invoices_unapproved": wd["invoices_unapproved"],
                 "top_vendors": [{"name": v, "amount": round(a, 2)} for v, a in top_vendors],
                 "waste_items": sorted(wd["waste_items"], key=lambda x: -x["amount"])[:10],
-                "inventory_begin": round(wd["inventory_begin"], 2),
-                "inventory_end": round(wd["inventory_end"], 2),
-                "inventory_adjustment": round(wd["inventory_adjustment"], 2),
-                "inv_cogs": round(inv_cogs, 2),
-                "inv_cogs_pct": inv_cogs_pct,
-                "est_cogs": est_cogs,
-                "est_cogs_pct": est_cogs_pct,
             }
 
         # Week totals
@@ -708,10 +823,6 @@ def main():
         all_food = sum(s["purchases_food"] for s in week_stores.values())
         all_pkg = sum(s["purchases_packaging"] for s in week_stores.values())
         all_bev = sum(s["purchases_beverage"] for s in week_stores.values())
-        all_inv_begin = sum(s["inventory_begin"] for s in week_stores.values())
-        all_inv_end = sum(s["inventory_end"] for s in week_stores.values())
-        all_inv_cogs = sum(s["inv_cogs"] for s in week_stores.values())
-        all_est_cogs = sum(s["est_cogs"] for s in week_stores.values())
 
         is_current = week["start"] <= today <= week["end"] + timedelta(days=1)
         is_past = week["end"] < today
@@ -733,12 +844,6 @@ def main():
                 "waste": round(all_waste, 2),
                 "net_purchases": round(all_net, 2),
                 "cogs_pct": round(all_net / all_ns * 100, 1) if all_ns > 0 else 0,
-                "inventory_begin": round(all_inv_begin, 2),
-                "inventory_end": round(all_inv_end, 2),
-                "inv_cogs": round(all_inv_cogs, 2),
-                "inv_cogs_pct": round(all_inv_cogs / all_ns * 100, 1) if all_ns > 0 and all_inv_cogs > 0 else 0,
-                "est_cogs": round(all_est_cogs, 2),
-                "est_cogs_pct": round(all_est_cogs / all_ns * 100, 1) if all_ns > 0 else 0,
             }
         })
 
@@ -759,12 +864,10 @@ def main():
 
         top_vendors = sorted(pd["vendors"].items(), key=lambda x: -x[1])[:10]
 
+        bi = pd.get("begin_inventory", 0)
+        ei = pd.get("inventory_end", 0)
         inv_cogs = pd.get("inv_cogs", 0)
-        inv_cogs_pct = round(inv_cogs / ns * 100, 1) if ns > 0 and inv_cogs > 0 else 0
-
-        # Estimated COGS using coverage factor
-        est_cogs = round(pd["net_purchases"] * COGS_COVERAGE_FACTOR, 2)
-        est_cogs_pct = round(est_cogs / ns * 100, 1) if ns > 0 else 0
+        inv_cogs_pct = round(inv_cogs / ns * 100, 1) if ns > 0 and inv_cogs != 0 else 0
 
         period_store_data[sn] = {
             "name": STORE_NAMES.get(sn, sn),
@@ -781,15 +884,14 @@ def main():
             "budget_cogs_pct": budget_cogs_pct,
             "budget_cogs": round(budget_cogs, 2),
             "has_stock_count": pd["has_stock_count"],
+            "has_begin_inv": bi > 0,
             "invoices_total": pd["invoices_total"],
             "invoices_approved": pd["invoices_approved"],
             "top_vendors": [{"name": v, "amount": round(a, 2)} for v, a in top_vendors],
-            "inventory_begin": round(pd["inventory_begin"], 2),
-            "inventory_end": round(pd["inventory_end"], 2),
+            "begin_inventory": round(bi, 2),
+            "end_inventory": round(ei, 2),
             "inv_cogs": round(inv_cogs, 2),
             "inv_cogs_pct": inv_cogs_pct,
-            "est_cogs": est_cogs,
-            "est_cogs_pct": est_cogs_pct,
         }
 
     # All stores period totals
@@ -801,10 +903,9 @@ def main():
     all_period_food = sum(s["purchases_food"] for s in period_store_data.values())
     all_period_pkg = sum(s["purchases_packaging"] for s in period_store_data.values())
     all_period_bev = sum(s["purchases_beverage"] for s in period_store_data.values())
-    all_period_inv_begin = sum(s["inventory_begin"] for s in period_store_data.values())
-    all_period_inv_end = sum(s["inventory_end"] for s in period_store_data.values())
+    all_period_begin_inv = sum(s["begin_inventory"] for s in period_store_data.values())
+    all_period_end_inv = sum(s["end_inventory"] for s in period_store_data.values())
     all_period_inv_cogs = sum(s["inv_cogs"] for s in period_store_data.values())
-    all_period_est_cogs = sum(s["est_cogs"] for s in period_store_data.values())
 
     # All stores budget
     all_budget_cogs_pct = 0
@@ -820,12 +921,14 @@ def main():
             break
 
     for sn in store_numbers:
+        has_begin = begin_inventory.get(sn, 0) > 0
         if current_week_idx is not None:
             wd = week_data[current_week_idx][sn]
             gm_status[sn] = {
                 "name": STORE_NAMES.get(sn, sn),
                 "inventory_done": wd["has_stock_count"],
                 "stock_count_date": wd["stock_count_date"],
+                "begin_inv_done": has_begin,
                 "invoices_total": wd["invoices_total"],
                 "invoices_approved": wd["invoices_approved"],
                 "invoices_unapproved": wd["invoices_unapproved"],
@@ -836,6 +939,7 @@ def main():
                 "name": STORE_NAMES.get(sn, sn),
                 "inventory_done": False,
                 "stock_count_date": None,
+                "begin_inv_done": has_begin,
                 "invoices_total": 0,
                 "invoices_approved": 0,
                 "invoices_unapproved": 0,
@@ -864,32 +968,62 @@ def main():
             "net_purchases": round(all_period_net, 2),
             "cogs_pct": round(all_period_net / all_period_ns * 100, 1) if all_period_ns > 0 else 0,
             "budget_cogs_pct": all_budget_cogs_pct,
-            "inventory_begin": round(all_period_inv_begin, 2),
-            "inventory_end": round(all_period_inv_end, 2),
+            "begin_inventory": round(all_period_begin_inv, 2),
+            "end_inventory": round(all_period_end_inv, 2),
             "inv_cogs": round(all_period_inv_cogs, 2),
-            "inv_cogs_pct": round(all_period_inv_cogs / all_period_ns * 100, 1) if all_period_ns > 0 and all_period_inv_cogs > 0 else 0,
-            "est_cogs": round(all_period_est_cogs, 2),
-            "est_cogs_pct": round(all_period_est_cogs / all_period_ns * 100, 1) if all_period_ns > 0 else 0,
+            "inv_cogs_pct": round(all_period_inv_cogs / all_period_ns * 100, 1) if all_period_ns > 0 and all_period_inv_cogs != 0 else 0,
         },
         "gm_status": gm_status,
         "store_order": store_numbers,
         "has_budget": budget is not None,
-        "coverage_factor": COGS_COVERAGE_FACTOR,
-        "coverage_source": COGS_COVERAGE_SOURCE,
     }
+
+    # --------------------------------------------------------
+    # Scan for existing period dashboards to build period nav
+    # --------------------------------------------------------
+    import glob as _glob
+    period_files = sorted(_glob.glob(os.path.join(OUTDIR, "cogs_P*_FY*.html")))
+    available_periods = []
+    for pf in period_files:
+        fname = os.path.basename(pf)
+        # Parse "cogs_P2_FY2026.html" -> period=2, fy=2026
+        try:
+            parts = fname.replace("cogs_P", "").replace(".html", "").split("_FY")
+            p_num = int(parts[0])
+            fy_num = int(parts[1])
+            available_periods.append({"period": p_num, "fy": fy_num, "file": fname})
+        except:
+            continue
+
+    # Add current period if not already in the list
+    current_fname = f"cogs_P{period}_FY{fy}.html"
+    if not any(ap["period"] == period and ap["fy"] == fy for ap in available_periods):
+        available_periods.append({"period": period, "fy": fy, "file": current_fname})
+    available_periods.sort(key=lambda x: (x["fy"], x["period"]))
+
+    dashboard_data["available_periods"] = available_periods
+    dashboard_data["current_file"] = current_fname
 
     # Generate HTML
     data_json = json.dumps(dashboard_data)
     html = generate_html(data_json)
 
-    outpath = os.path.join(OUTDIR, "cogs_dashboard.html")
-    with open(outpath, "w", encoding="utf-8") as f:
+    # Save period-specific file
+    period_outpath = os.path.join(OUTDIR, current_fname)
+    with open(period_outpath, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    # Also save as main dashboard (always points to latest run)
+    main_outpath = os.path.join(OUTDIR, "cogs_dashboard.html")
+    with open(main_outpath, "w", encoding="utf-8") as f:
         f.write(html)
 
     print(f"\n{'=' * 60}")
-    print(f"  COGS Dashboard saved to: {outpath}")
+    print(f"  COGS Dashboard saved to:")
+    print(f"    {period_outpath}")
+    print(f"    {main_outpath}")
     print(f"  FY{fy} Period {period}")
-    print(f"  Open cogs_dashboard.html in your browser!")
+    print(f"  Period selector includes: {', '.join(f'P{ap['period']}' for ap in available_periods)}")
     print(f"{'=' * 60}")
 
 
@@ -911,6 +1045,17 @@ def generate_html(data_json):
   .header .meta {{ text-align: right; font-size: 13px; color: #94a3b8; }}
   .header .meta .period {{ font-size: 16px; color: #f8fafc; font-weight: 600; }}
   .header .meta .source {{ font-size: 11px; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; }}
+
+  /* Period Selector */
+  .period-nav {{ display: flex; align-items: center; gap: 8px; margin-top: 6px; justify-content: flex-end; }}
+  .period-nav label {{ font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }}
+  .period-select {{ background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; padding: 5px 28px 5px 10px; font-size: 13px; font-weight: 500; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }}
+  .period-select:hover {{ border-color: #3b82f6; background-color: #3d4f6e; }}
+  .period-select:focus {{ outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }}
+  .period-select option {{ background: #1e293b; color: #f8fafc; }}
+  .period-badge {{ font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px; }}
+  .period-badge.closed {{ background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }}
+  .period-badge.current {{ background: #3b82f622; color: #3b82f6; border: 1px solid #3b82f644; }}
 
   .container {{ max-width: 1500px; margin: 0 auto; padding: 20px; }}
 
@@ -994,6 +1139,11 @@ def generate_html(data_json):
     <div id="dateRange"></div>
     <div id="lastUpdated"></div>
     <div class="source">Data: R365 Inventory + Invoices + Toast Sales</div>
+    <div class="period-nav">
+      <label>Period:</label>
+      <select id="periodSelect" class="period-select" onchange="switchPeriod(this.value)"></select>
+      <span id="periodBadge" class="period-badge"></span>
+    </div>
   </div>
 </div>
 
@@ -1008,7 +1158,7 @@ def generate_html(data_json):
   <!-- Charts -->
   <div class="charts-row">
     <div class="chart-card">
-      <h3>Weekly R365 COGS % vs Budget</h3>
+      <h3>Weekly R365 Purchases % vs Budget</h3>
       <canvas id="cogsPctChart" height="200"></canvas>
     </div>
     <div class="chart-card">
@@ -1031,7 +1181,8 @@ def generate_html(data_json):
   <div class="vendor-grid" id="vendorGrid"></div>
 
   <div class="refresh-notice">
-    Run <code>python cogs_dashboard.py</code> to update &bull;
+    Run <code>py cogs_dashboard.py</code> to update current period &bull;
+    Run <code>py cogs_dashboard.py P2</code> for a specific period &bull;
     GMs: Inventory counts + invoice approval due by <strong>Wednesday 8am</strong> &bull;
     Generated <span id="refreshTime"></span>
   </div>
@@ -1060,16 +1211,44 @@ document.getElementById('dateRange').textContent = `${{D.period_start}} to ${{D.
 document.getElementById('lastUpdated').textContent = `Updated: ${{new Date(D.generated).toLocaleString()}}`;
 document.getElementById('refreshTime').textContent = new Date(D.generated).toLocaleString();
 
-// KPI Cards - R365 invoices + budget for context
+// Period Selector
+const periodSelect = document.getElementById('periodSelect');
+const periodBadge = document.getElementById('periodBadge');
+const availablePeriods = D.available_periods || [];
+const currentFile = D.current_file || '';
+
+// Determine if current period is closed
+const periodEndDate = new Date(D.period_end + 'T23:59:59');
+const isClosed = periodEndDate < new Date();
+periodBadge.textContent = isClosed ? 'CLOSED' : 'LIVE';
+periodBadge.className = 'period-badge ' + (isClosed ? 'closed' : 'current');
+
+availablePeriods.forEach(ap => {{
+  const opt = document.createElement('option');
+  opt.value = ap.file;
+  opt.textContent = `P${{ap.period}} FY${{ap.fy}}`;
+  if (ap.file === currentFile) opt.selected = true;
+  periodSelect.appendChild(opt);
+}});
+
+function switchPeriod(file) {{
+  if (file && file !== currentFile) {{
+    window.location.href = file;
+  }}
+}}
+
+// KPI Cards - Inventory method COGS
 const pt = D.period_totals;
-const budgetVar = pt.budget_cogs_pct > 0 ? pt.cogs_pct - pt.budget_cogs_pct : null;
+const hasInvCogs = pt.inv_cogs !== 0 && pt.begin_inventory > 0;
+const invCogsPct = hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct;
+const budgetVar = pt.budget_cogs_pct > 0 ? invCogsPct - pt.budget_cogs_pct : null;
 const kpis = [
-  {{ label: 'R365 COGS $', value: fmt(pt.net_purchases), sub: 'Purchases - Credits (R365 OData)', change: null }},
-  {{ label: 'R365 COGS %', value: fmtPct(pt.cogs_pct), sub: 'Budget: ' + fmtPct(pt.budget_cogs_pct), highlight: budgetVar != null ? -budgetVar : null, change: budgetVar != null ? -budgetVar : null, changeLabel: 'vs Budget' }},
+  {{ label: 'COGS $', value: hasInvCogs ? fmt(pt.inv_cogs) : fmt(pt.net_purchases), sub: hasInvCogs ? 'Begin Inv + Purchases - End Inv' : 'R365 Purchases (no inv counts yet)', change: null }},
+  {{ label: 'COGS %', value: fmtPct(invCogsPct), sub: 'Budget: ' + fmtPct(pt.budget_cogs_pct), highlight: budgetVar != null ? -budgetVar : null, change: budgetVar != null ? -budgetVar : null, changeLabel: 'vs Budget' }},
   {{ label: 'Net Sales', value: fmt(pt.net_sales), sub: 'Toast POS', change: null }},
-  {{ label: 'Gross Purchases', value: fmt(pt.purchases_total), sub: 'Food + Pkg + Bev', change: null }},
-  {{ label: 'Credits', value: fmt(pt.credits), sub: 'Vendor credits/returns', change: null }},
-  {{ label: 'Waste', value: fmt(pt.waste), sub: fmtPct(pt.net_sales > 0 ? pt.waste/pt.net_sales*100 : 0) + ' of sales', change: null, highlight: pt.waste > 0 ? -1 : 0 }},
+  {{ label: 'Begin Inventory', value: fmt(pt.begin_inventory), sub: 'Prior period-end count', change: null }},
+  {{ label: 'End Inventory', value: fmt(pt.end_inventory), sub: 'Current period-end count', change: null }},
+  {{ label: 'R365 Purchases', value: fmt(pt.net_purchases), sub: 'Invoices - Credits (R365 OData)', change: null }},
 ];
 
 const kpiRow = document.getElementById('kpiRow');
@@ -1104,6 +1283,10 @@ D.store_order.forEach(sn => {{
     ? `${{gm.invoices_approved}}/${{gm.invoices_total}} approved` + (gm.invoices_unapproved > 0 ? ` (${{gm.invoices_unapproved}} pending)` : '')
     : 'No invoices this week';
 
+  const beginIcon = gm.begin_inv_done ? 'check-done' : 'check-missing';
+  const beginSymbol = gm.begin_inv_done ? '\\u2713' : '\\u2717';
+  const beginText = gm.begin_inv_done ? 'Found' : 'Missing';
+
   const countIcon = gm.inventory_done ? 'check-done' : 'check-missing';
   const countSymbol = gm.inventory_done ? '\\u2713' : '\\u2717';
   const countText = gm.inventory_done
@@ -1113,8 +1296,12 @@ D.store_order.forEach(sn => {{
   card.innerHTML = `
     <div class="store-name">${{sn}} ${{gm.name}}</div>
     <div class="check-row">
+      <div class="check-icon ${{beginIcon}}">${{beginSymbol}}</div>
+      <div>Beginning Inv Count: ${{beginText}}</div>
+    </div>
+    <div class="check-row">
       <div class="check-icon ${{countIcon}}">${{countSymbol}}</div>
-      <div>Inventory Count: ${{countText}}</div>
+      <div>Ending Inv Count: ${{countText}}</div>
     </div>
     <div class="check-row">
       <div class="check-icon ${{invIcon}}">${{invSymbol}}</div>
@@ -1130,7 +1317,7 @@ const weekR365CogsPct = D.weeks.map(w => w.totals.cogs_pct);
 const budgetLine = D.period_totals.budget_cogs_pct > 0 ? D.weeks.map(() => D.period_totals.budget_cogs_pct) : [];
 
 const cogsPctDatasets = [
-  {{ label: 'R365 COGS %', data: weekR365CogsPct, backgroundColor: '#3b82f688', borderColor: '#3b82f6', borderWidth: 2, type: 'bar' }},
+  {{ label: 'Weekly Purchases %', data: weekR365CogsPct, backgroundColor: '#3b82f688', borderColor: '#3b82f6', borderWidth: 2, type: 'bar' }},
 ];
 if (budgetLine.length > 0) {{
   cogsPctDatasets.push({{ label: 'Budget COGS %', data: budgetLine, borderColor: '#ef444488', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, type: 'line' }});
@@ -1169,63 +1356,67 @@ new Chart(document.getElementById('cogsBreakdownChart'), {{
   }}
 }});
 
-// Store Scoreboard Table - R365 COGS with budget comparison
+// Store Scoreboard Table - Inventory method COGS
 const storeTable = document.getElementById('storeTable');
 let tableHtml = `<thead><tr>
   <th>Store</th>
   <th class="right">Net Sales</th>
+  <th class="right">Begin Inv</th>
   <th class="right">Purchases</th>
-  <th class="right">Credits</th>
-  <th class="right">Net COGS</th>
+  <th class="right">End Inv</th>
+  <th class="right">COGS $</th>
   <th class="right">COGS %</th>
   <th class="right">Budget %</th>
   <th class="right">Variance</th>
   <th class="right">Waste</th>
-  <th class="right">Inv Count</th>
 </tr></thead><tbody>`;
 
 D.store_order.forEach(sn => {{
   const s = D.period_stores[sn];
   if (!s) return;
-  const bVar = s.budget_cogs_pct > 0 ? s.cogs_pct - s.budget_cogs_pct : null;
+  // Use inv_cogs if available, otherwise fall back to net_purchases
+  const hasCogs = s.has_begin_inv && s.has_stock_count;
+  const cogsVal = hasCogs ? s.inv_cogs : s.net_purchases;
+  const cogsPct = hasCogs ? s.inv_cogs_pct : s.cogs_pct;
+  const bVar = s.budget_cogs_pct > 0 ? cogsPct - s.budget_cogs_pct : null;
   const varHtml = bVar != null
     ? `<span class="${{bVar <= 0 ? 'positive' : 'negative'}}">${{bVar > 0 ? '+' : ''}}${{bVar.toFixed(1)}}%</span>`
     : '<span class="neutral">\\u2014</span>';
-  const cogsCls = s.cogs_pct > 35 ? 'negative' : s.cogs_pct > 32 ? 'warning' : 'positive';
-  const countHtml = s.has_stock_count
-    ? '<span class="positive">\\u2713</span>'
-    : '<span class="negative">\\u2717</span>';
+  const cogsCls = cogsPct > 35 ? 'negative' : cogsPct > 32 ? 'warning' : 'positive';
+  const biHtml = s.has_begin_inv ? fmt(s.begin_inventory) : '<span class="neutral">\\u2014</span>';
+  const eiHtml = s.has_stock_count ? fmt(s.end_inventory) : '<span class="neutral">\\u2014</span>';
 
   tableHtml += `<tr>
     <td><strong>${{sn}}</strong> ${{s.name}}</td>
     <td class="right">${{fmt(s.net_sales)}}</td>
-    <td class="right">${{fmt(s.purchases_total)}}</td>
-    <td class="right" style="color:#94a3b8">${{fmt(s.credits)}}</td>
+    <td class="right" style="color:#94a3b8">${{biHtml}}</td>
     <td class="right">${{fmt(s.net_purchases)}}</td>
-    <td class="right"><span class="${{cogsCls}}">${{fmtPct(s.cogs_pct)}}</span></td>
+    <td class="right" style="color:#94a3b8">${{eiHtml}}</td>
+    <td class="right">${{fmt(cogsVal)}}</td>
+    <td class="right"><span class="${{cogsCls}}">${{fmtPct(cogsPct)}}</span></td>
     <td class="right" style="color:#94a3b8">${{fmtPct(s.budget_cogs_pct)}}</td>
     <td class="right">${{varHtml}}</td>
     <td class="right" style="color:#f59e0b">${{fmt(s.waste)}}</td>
-    <td class="right">${{countHtml}}</td>
   </tr>`;
 }});
 
 // Total row
-const totalBudgetVar = pt.budget_cogs_pct > 0 ? pt.cogs_pct - pt.budget_cogs_pct : null;
+const totalCogsPct = hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct;
+const totalBudgetVar = pt.budget_cogs_pct > 0 ? totalCogsPct - pt.budget_cogs_pct : null;
 const totalVarHtml = totalBudgetVar != null
   ? `<span class="${{totalBudgetVar <= 0 ? 'positive' : 'negative'}}">${{totalBudgetVar > 0 ? '+' : ''}}${{totalBudgetVar.toFixed(1)}}%</span>`
   : '<span class="neutral">\\u2014</span>';
 tableHtml += `<tr class="total-row">
   <td><strong>ALL STORES</strong></td>
   <td class="right">${{fmt(pt.net_sales)}}</td>
-  <td class="right">${{fmt(pt.purchases_total)}}</td>
-  <td class="right" style="color:#94a3b8">${{fmt(pt.credits)}}</td>
+  <td class="right" style="color:#94a3b8">${{fmt(pt.begin_inventory)}}</td>
   <td class="right">${{fmt(pt.net_purchases)}}</td>
-  <td class="right">${{fmtPct(pt.cogs_pct)}}</td>
+  <td class="right" style="color:#94a3b8">${{fmt(pt.end_inventory)}}</td>
+  <td class="right">${{hasInvCogs ? fmt(pt.inv_cogs) : fmt(pt.net_purchases)}}</td>
+  <td class="right">${{fmtPct(totalCogsPct)}}</td>
   <td class="right" style="color:#94a3b8">${{fmtPct(pt.budget_cogs_pct)}}</td>
   <td class="right">${{totalVarHtml}}</td>
   <td class="right" style="color:#f59e0b">${{fmt(pt.waste)}}</td>
-  <td class="right">\\u2014</td>
 </tr>`;
 tableHtml += '</tbody>';
 storeTable.innerHTML = tableHtml;
