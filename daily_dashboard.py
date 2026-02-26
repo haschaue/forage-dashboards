@@ -642,30 +642,28 @@ def main():
     print(f"\n--- FY{fy} P{display_period} ---")
     display_data = build_period_data(token, fy, display_period, display_start, display_end, today, yesterday, budget)
 
-    # Build data for previous period (fully cached, fast)
+    # Build data for all periods P1 through display_period (previous periods fully cached)
     all_periods_list = get_445_periods(FISCAL_YEAR_STARTS[fy])
-    prev_period_num = display_period - 1
     periods = {}
     period_options = []
 
-    periods[f"P{display_period}"] = display_data
-    period_options.append({
-        "key": f"P{display_period}",
-        "label": f"P{display_period} ({display_start.strftime('%m/%d')} - {display_end.strftime('%m/%d')})"
-    })
-
-    if prev_period_num >= 1:
-        prev_p = all_periods_list[prev_period_num - 1]
-        print(f"\n--- FY{fy} P{prev_period_num} [cached] ---")
-        prev_data = build_period_data(token, fy, prev_period_num, prev_p["start"], prev_p["end"], today, yesterday, budget)
-        periods[f"P{prev_period_num}"] = prev_data
+    for p_num in range(1, display_period + 1):
+        p_info = all_periods_list[p_num - 1]
+        if p_num == display_period:
+            p_data = display_data
+        else:
+            print(f"\n--- FY{fy} P{p_num} [cached] ---")
+            p_data = build_period_data(token, fy, p_num, p_info["start"], p_info["end"], today, yesterday, budget)
+        periods[f"P{p_num}"] = p_data
         period_options.append({
-            "key": f"P{prev_period_num}",
-            "label": f"P{prev_period_num} ({prev_p['start'].strftime('%m/%d')} - {prev_p['end'].strftime('%m/%d')})"
+            "key": f"P{p_num}",
+            "label": f"P{p_num} ({p_info['start'].strftime('%m/%d')} - {p_info['end'].strftime('%m/%d')})"
         })
 
-    # Sort options by period number
-    period_options.sort(key=lambda x: int(x["key"][1:]))
+    # Compute YTD totals across all periods
+    ytd_net_sales = sum(p["all_stores"]["net_sales"] for p in periods.values())
+    ytd_py_net_sales = sum(p["all_stores"]["py_net_sales"] for p in periods.values())
+    ytd_growth = round((ytd_net_sales - ytd_py_net_sales) / ytd_py_net_sales * 100, 1) if ytd_py_net_sales > 0 else None
 
     # Round all floats
     def round_dict(d):
@@ -683,6 +681,9 @@ def main():
         "periods": periods,
         "default": f"P{display_period}",
         "period_options": period_options,
+        "ytd_net_sales": round(ytd_net_sales, 2),
+        "ytd_py_net_sales": round(ytd_py_net_sales, 2),
+        "ytd_growth": ytd_growth,
     }
 
     # Generate HTML
@@ -699,8 +700,8 @@ def main():
     print(f"\n{'='*60}")
     print(f"  Dashboard saved to: {outpath}")
     print(f"  Default period: P{display_period} ({days_completed} completed days)")
-    if prev_period_num >= 1:
-        print(f"  Also includes: P{prev_period_num}")
+    print(f"  Periods included: P1 through P{display_period}")
+    print(f"  YTD Net Sales: ${ytd_net_sales:,.0f}")
     print(f"  Open in your browser to view!")
     print(f"{'='*60}")
 
@@ -926,6 +927,7 @@ function renderDashboard(D) {{
   const a = D.all_stores;
   const kpis = [
     {{ label: 'Period Net Sales', value: fmt(a.net_sales), sub: 'Budget: ' + fmt(a.budget_sales_prorated) + ' (prorated)', change: a.budget_variance, changeLabel: 'vs Budget' }},
+    {{ label: 'YTD Net Sales', value: fmt(ALLDATA.ytd_net_sales), sub: 'FY' + D.fiscal_year + ' P1\u2013P' + D.period + ' all stores', change: ALLDATA.ytd_growth, changeLabel: 'YoY' }},
     {{ label: 'SSS Growth', value: a.sss_growth != null ? (a.sss_growth >= 0 ? '+' : '') + a.sss_growth + '%' : 'N/A', sub: 'Same store sales YoY (' + D.days_completed + ' days)', change: null, highlight: a.sss_growth }},
     {{ label: 'Labor %', value: fmtPct(a.labor_pct), sub: 'Bgt Crew Wages: ' + fmtPct(a.budget_crew_wages_pct), change: a.budget_crew_wages_pct > 0 ? -(a.labor_pct - a.budget_crew_wages_pct) : null, changeLabel: 'vs Budget' }},
     {{ label: 'Avg Check', value: fmt(a.avg_check), sub: a.checks.toLocaleString() + ' checks', change: null }},
