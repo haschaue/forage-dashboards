@@ -68,7 +68,7 @@ COGS_COVERAGE_SOURCE = "P1 2026"  # Period used to calibrate
 COGS_TXN_TYPES = ["AP Invoice", "AP Credit Memo", "Stock Count", "Waste Log", "Item Transfer"]
 
 # Store display names
-STORE_NAMES = {k: v["name"] for k, v in SSS_CONFIG.items()}
+STORE_NAMES = {k: v["name"] for k, v in SSS_CONFIG.items() if v.get("sss_start_period") is not None}
 
 
 # ============================================================
@@ -189,7 +189,7 @@ def get_445_periods(fy_start_str):
 
 def get_current_period():
     """Determine which fiscal year and period today falls in."""
-    today = datetime.now()
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     for fy_year in sorted(FISCAL_YEAR_STARTS.keys(), reverse=True):
         periods = get_445_periods(FISCAL_YEAR_STARTS[fy_year])
         for p in periods:
@@ -483,33 +483,9 @@ def main():
     for txn_type, txns in sorted(txn_by_type.items()):
         print(f"    {txn_type}: {len(txns)} transactions")
 
-    # Pull beginning inventory - stock counts from prior period end
-    # GMs do period-end counts on the last day (Tue) or morning after (Wed)
-    begin_inv_start = period_start - timedelta(days=3)
-    begin_inv_end = period_start  # include period start for grace
-    print(f"\n  Pulling beginning inventory counts "
-          f"({begin_inv_start.strftime('%m/%d')} - {begin_inv_end.strftime('%m/%d')})...")
-    begin_inv_url = (
-        f"{R365_BASE}/Transaction?$top=5000"
-        f"&$filter=type eq 'Stock Count'"
-        f" and date ge {begin_inv_start.strftime('%Y-%m-%dT00:00:00Z')}"
-        f" and date le {begin_inv_end.strftime('%Y-%m-%dT23:59:59Z')}"
-    )
-    try:
-        begin_inv_data = r365_fetch(begin_inv_url)
-        begin_inv_txns = begin_inv_data.get("value", [])
-    except Exception as e:
-        begin_inv_txns = []
-        print(f"    Error: {e}")
-
-    begin_inv_txn_ids = set(t["transactionId"] for t in begin_inv_txns)
-    print(f"    {len(begin_inv_txns)} beginning inventory stock counts found")
-
-    # Add beginning inventory txns to main list for detail pull
-    existing_ids = {t["transactionId"] for t in transactions}
-    for t in begin_inv_txns:
-        if t["transactionId"] not in existing_ids:
-            transactions.append(t)
+    # Beginning inventory is extracted from previousCountTotal on period-end
+    # stock count detail lines (R365 stores the prior count on each detail).
+    # No separate BI transaction pull needed.
 
     # --------------------------------------------------------
     # Step 3: Pull transaction details
@@ -564,45 +540,19 @@ def main():
                 return i
         return None
 
-    # First pass: process beginning inventory stock counts (prior period end)
+    # Beginning inventory will be extracted from previousCountTotal on
+    # period stock count detail lines during processing below.
+    # We use the FIRST stock count per store — its previousCountTotal equals
+    # the prior period-end count (the true beginning inventory).
     begin_inventory = defaultdict(float)  # {store_num: total $}
-    for td in details:
-        txn_id = td.get("transactionId", "")
-        if txn_id not in begin_inv_txn_ids:
-            continue
-        txn = txn_lookup.get(txn_id)
-        if not txn:
-            continue
-        row_type = td.get("rowType", "")
-        if row_type != "Detail":
-            continue
-        loc_id = td.get("locationId") or txn.get("locationId", "")
-        store_num = loc_id_to_num.get(loc_id, "Unknown")
-        if store_num == "Unknown" or store_num not in STORE_NAMES:
-            continue
-        gl_id = td.get("glAccountId", "")
-        gl_info = gl_map.get(gl_id, {})
-        gl_num = gl_info.get("number", "")
-        if not gl_num.startswith("5"):
-            continue
-        amount = td.get("amount", 0) or 0
-        begin_inventory[store_num] += amount
+    end_inventory = defaultdict(float)    # {store_num: total $} — from LAST stock count only
+    _bi_source_txn = {}  # {store_num: txn_id} — tracks which txn provides BI per store
+    _ei_source_txn = {}  # {store_num: (txn_date, txn_id)} — tracks latest txn for EI per store
 
-    if begin_inventory:
-        print(f"\n  Beginning inventory (prior period-end counts):")
-        for sn in sorted(begin_inventory.keys()):
-            print(f"    {sn} {STORE_NAMES.get(sn, '')}: ${begin_inventory[sn]:,.2f}")
-        print(f"    TOTAL: ${sum(begin_inventory.values()):,.2f}")
-    else:
-        print(f"\n  No beginning inventory counts found")
-
-    # Second pass: process period transactions (skip beginning inventory)
+    # Process all period transactions
     _grace_logged = set()  # Track which grace-period stock counts we've already logged
     for td in details:
         txn_id = td.get("transactionId", "")
-        # Skip beginning inventory transactions
-        if txn_id in begin_inv_txn_ids:
-            continue
         txn = txn_lookup.get(txn_id)
         if not txn:
             continue
@@ -698,18 +648,39 @@ def main():
             })
 
         elif txn_type == "Stock Count" and row_type == "Detail":
-            if gl_num.startswith("5"):
-                wd["has_stock_count"] = True
-                wd["stock_count_date"] = txn_date_str[:10]
-                pd["has_stock_count"] = True
-                # Stock count: amount = ending inv value, previousCountTotal = beginning inv
-                prev = td.get("previousCountTotal", 0) or 0
-                adj = td.get("adjustment", 0) or 0
-                wd["inventory_end"] += amount if amount else 0
-                wd["inventory_begin"] += prev
-                wd["inventory_adjustment"] += adj
-                pd["inventory_end"] += amount if amount else 0
-                pd["inventory_begin"] += prev
+            wd["has_stock_count"] = True
+            wd["stock_count_date"] = txn_date_str[:10]
+            pd["has_stock_count"] = True
+            prev = td.get("previousCountTotal", 0) or 0
+            adj = td.get("adjustment", 0) or 0
+            wd["inventory_adjustment"] += adj
+
+            # Beginning inventory: use previousCountTotal from the FIRST
+            # stock count per store (= the prior period-end count value).
+            if store_num not in _bi_source_txn:
+                _bi_source_txn[store_num] = txn_id
+            if _bi_source_txn[store_num] == txn_id:
+                begin_inventory[store_num] += prev
+
+            # Ending inventory: use amount from the LAST stock count per store.
+            # Track which txn is latest by date; replace if this one is newer.
+            txn_date_key = txn_date_str[:10]
+            if store_num not in _ei_source_txn or txn_date_key >= _ei_source_txn[store_num][0]:
+                if store_num in _ei_source_txn and _ei_source_txn[store_num][1] != txn_id:
+                    # New later txn found — reset this store's EI accumulator
+                    end_inventory[store_num] = 0
+                _ei_source_txn[store_num] = (txn_date_key, txn_id)
+            if _ei_source_txn[store_num][1] == txn_id:
+                end_inventory[store_num] += amount if amount else 0
+
+    # Print beginning inventory summary
+    if begin_inventory:
+        print(f"\n  Beginning inventory (from previousCountTotal on period stock counts):")
+        for sn in sorted(begin_inventory.keys()):
+            print(f"    {sn} {STORE_NAMES.get(sn, '')}: ${begin_inventory[sn]:,.2f}")
+        print(f"    TOTAL: ${sum(begin_inventory.values()):,.2f}")
+    else:
+        print(f"\n  No beginning inventory counts found")
 
     # Calculate net purchases and inventory-method COGS per week/store
     for wi in week_data:
@@ -723,17 +694,19 @@ def main():
         pd_store = period_data[sn]  # defaultdict creates entry if needed
         pd_store["net_purchases"] = pd_store["purchases_total"] - pd_store["credits"]
         # Period COGS = Beginning Inventory + Net Purchases - Ending Inventory
+        # Only calculate when period is closed (final counts are in)
         bi = begin_inventory.get(sn, 0)
-        ei = pd_store["inventory_end"]  # from period-end stock counts
+        ei = end_inventory.get(sn, 0)  # from LAST stock count only
         np = pd_store["net_purchases"]
         pd_store["begin_inventory"] = bi
-        if bi > 0 and ei > 0:
+        pd_store["inventory_end"] = ei  # override accumulated value with last-count-only
+        if is_closed and bi > 0 and ei > 0:
             pd_store["inv_cogs"] = bi + np - ei
         else:
             pd_store["inv_cogs"] = 0
 
-    # Print COGS summary
-    if any(period_data[sn].get("inv_cogs", 0) != 0 for sn in period_data):
+    # Print COGS summary (only for closed periods)
+    if is_closed and any(period_data[sn].get("inv_cogs", 0) != 0 for sn in period_data):
         print(f"\n  COGS = Beginning Inv + Purchases - Ending Inv:")
         for sn in sorted(period_data.keys()):
             pd_store = period_data[sn]
@@ -744,6 +717,8 @@ def main():
             if bi > 0 or ei > 0:
                 print(f"    {sn} {STORE_NAMES.get(sn, '')}: "
                       f"${bi:,.0f} + ${np:,.0f} - ${ei:,.0f} = ${cogs:,.0f}")
+    elif not is_closed:
+        print(f"\n  Inventory COGS: skipped (period still open, using purchase-based COGS)")
 
     # --------------------------------------------------------
     # Step 5: Pull Toast sales for COGS % calculation
@@ -906,6 +881,11 @@ def main():
     all_period_begin_inv = sum(s["begin_inventory"] for s in period_store_data.values())
     all_period_end_inv = sum(s["end_inventory"] for s in period_store_data.values())
     all_period_inv_cogs = sum(s["inv_cogs"] for s in period_store_data.values())
+    # Blended COGS: use inv_cogs for stores that have it, net_purchases for the rest
+    all_period_blended_cogs = sum(
+        s["inv_cogs"] if s["inv_cogs"] != 0 else s["net_purchases"]
+        for s in period_store_data.values()
+    )
 
     # All stores budget
     all_budget_cogs_pct = 0
@@ -972,6 +952,8 @@ def main():
             "end_inventory": round(all_period_end_inv, 2),
             "inv_cogs": round(all_period_inv_cogs, 2),
             "inv_cogs_pct": round(all_period_inv_cogs / all_period_ns * 100, 1) if all_period_ns > 0 and all_period_inv_cogs != 0 else 0,
+            "blended_cogs": round(all_period_blended_cogs, 2),
+            "blended_cogs_pct": round(all_period_blended_cogs / all_period_ns * 100, 1) if all_period_ns > 0 else 0,
         },
         "gm_status": gm_status,
         "store_order": store_numbers,
@@ -1240,10 +1222,11 @@ function switchPeriod(file) {{
 // KPI Cards - Inventory method COGS
 const pt = D.period_totals;
 const hasInvCogs = pt.inv_cogs !== 0 && pt.begin_inventory > 0;
-const invCogsPct = hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct;
+const hasBlended = pt.blended_cogs !== undefined && pt.blended_cogs > 0;
+const invCogsPct = hasBlended ? pt.blended_cogs_pct : (hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct);
 const budgetVar = pt.budget_cogs_pct > 0 ? invCogsPct - pt.budget_cogs_pct : null;
 const kpis = [
-  {{ label: 'COGS $', value: hasInvCogs ? fmt(pt.inv_cogs) : fmt(pt.net_purchases), sub: hasInvCogs ? 'Begin Inv + Purchases - End Inv' : 'R365 Purchases (no inv counts yet)', change: null }},
+  {{ label: 'COGS $', value: hasBlended ? fmt(pt.blended_cogs) : fmt(pt.net_purchases), sub: hasBlended ? 'Blended: Inv method + purchases where no counts' : 'R365 Purchases (no inv counts yet)', change: null }},
   {{ label: 'COGS %', value: fmtPct(invCogsPct), sub: 'Budget: ' + fmtPct(pt.budget_cogs_pct), highlight: budgetVar != null ? -budgetVar : null, change: budgetVar != null ? -budgetVar : null, changeLabel: 'vs Budget' }},
   {{ label: 'Net Sales', value: fmt(pt.net_sales), sub: 'Toast POS', change: null }},
   {{ label: 'Begin Inventory', value: fmt(pt.begin_inventory), sub: 'Prior period-end count', change: null }},
@@ -1375,7 +1358,7 @@ D.store_order.forEach(sn => {{
   const s = D.period_stores[sn];
   if (!s) return;
   // Use inv_cogs if available, otherwise fall back to net_purchases
-  const hasCogs = s.has_begin_inv && s.has_stock_count;
+  const hasCogs = s.has_begin_inv && s.has_stock_count && s.inv_cogs !== 0;
   const cogsVal = hasCogs ? s.inv_cogs : s.net_purchases;
   const cogsPct = hasCogs ? s.inv_cogs_pct : s.cogs_pct;
   const bVar = s.budget_cogs_pct > 0 ? cogsPct - s.budget_cogs_pct : null;
@@ -1401,7 +1384,7 @@ D.store_order.forEach(sn => {{
 }});
 
 // Total row
-const totalCogsPct = hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct;
+const totalCogsPct = hasBlended ? pt.blended_cogs_pct : (hasInvCogs ? pt.inv_cogs_pct : pt.cogs_pct);
 const totalBudgetVar = pt.budget_cogs_pct > 0 ? totalCogsPct - pt.budget_cogs_pct : null;
 const totalVarHtml = totalBudgetVar != null
   ? `<span class="${{totalBudgetVar <= 0 ? 'positive' : 'negative'}}">${{totalBudgetVar > 0 ? '+' : ''}}${{totalBudgetVar.toFixed(1)}}%</span>`
@@ -1412,7 +1395,7 @@ tableHtml += `<tr class="total-row">
   <td class="right" style="color:#94a3b8">${{fmt(pt.begin_inventory)}}</td>
   <td class="right">${{fmt(pt.net_purchases)}}</td>
   <td class="right" style="color:#94a3b8">${{fmt(pt.end_inventory)}}</td>
-  <td class="right">${{hasInvCogs ? fmt(pt.inv_cogs) : fmt(pt.net_purchases)}}</td>
+  <td class="right">${{hasBlended ? fmt(pt.blended_cogs) : fmt(pt.net_purchases)}}</td>
   <td class="right">${{fmtPct(totalCogsPct)}}</td>
   <td class="right" style="color:#94a3b8">${{fmtPct(pt.budget_cogs_pct)}}</td>
   <td class="right">${{totalVarHtml}}</td>
