@@ -962,12 +962,34 @@ def main():
 
     # --------------------------------------------------------
     # Scan for existing period dashboards to build period nav
+    # Combines: (1) files in local OUTDIR, (2) files tracked by git on the
+    # current branch. This prevents the dropdown from losing prior periods
+    # when run in a fresh clone, a different working dir, or after cleanup.
     # --------------------------------------------------------
     import glob as _glob
-    period_files = sorted(_glob.glob(os.path.join(OUTDIR, "cogs_P*_FY*.html")))
+    import subprocess as _sp
+
+    found_fnames = set()
+    # (1) Local filesystem
+    for pf in _glob.glob(os.path.join(OUTDIR, "cogs_P*_FY*.html")):
+        found_fnames.add(os.path.basename(pf))
+    # (2) Git-tracked files (fallback - survives missing local files)
+    try:
+        result = _sp.run(
+            ["git", "ls-files", "cogs_P*_FY*.html"],
+            cwd=OUTDIR, capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line:
+                    found_fnames.add(os.path.basename(line))
+    except Exception as _e:
+        # git not available or not a repo - silently fall back to filesystem only
+        pass
+
     available_periods = []
-    for pf in period_files:
-        fname = os.path.basename(pf)
+    for fname in sorted(found_fnames):
         # Parse "cogs_P2_FY2026.html" -> period=2, fy=2026
         try:
             parts = fname.replace("cogs_P", "").replace(".html", "").split("_FY")
