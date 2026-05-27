@@ -23,6 +23,7 @@ import base64
 import urllib.request
 import json
 import os
+import re
 import ssl
 import time
 from datetime import datetime, timedelta
@@ -681,6 +682,40 @@ def main():
         print(f"    TOTAL: ${sum(begin_inventory.values()):,.2f}")
     else:
         print(f"\n  No beginning inventory counts found")
+
+    # --------------------------------------------------------
+    # Fallback: if a store's previousCountTotal is $0 but the prior period's
+    # dashboard has an ending inventory on file, use that. This handles
+    # the case where a GM creates a period-end count without linking it
+    # to the prior approved count in R365.
+    # --------------------------------------------------------
+    if period > 1:
+        prior_fname = f"cogs_P{period - 1}_FY{fy}.html"
+    else:
+        prior_fname = f"cogs_P12_FY{fy - 1}.html"
+    prior_path = os.path.join(OUTDIR, prior_fname)
+    if os.path.exists(prior_path):
+        try:
+            with open(prior_path, "r", encoding="utf-8") as _f:
+                _prior_html = _f.read()
+            _m = re.search(r"const D = (\{.*?\});\n", _prior_html)
+            if _m:
+                _prior = json.loads(_m.group(1))
+                _prior_stores = _prior.get("period_stores", {})
+                fallback_used = []
+                for sn in STORE_NAMES.keys():
+                    if begin_inventory.get(sn, 0) > 0:
+                        continue
+                    prior_ei = _prior_stores.get(sn, {}).get("end_inventory", 0)
+                    if prior_ei and prior_ei > 0:
+                        begin_inventory[sn] = prior_ei
+                        fallback_used.append((sn, prior_ei))
+                if fallback_used:
+                    print(f"\n  Beginning inventory fallback (from {prior_fname} end_inventory):")
+                    for sn, val in fallback_used:
+                        print(f"    {sn} {STORE_NAMES.get(sn, '')}: ${val:,.2f}")
+        except Exception as _e:
+            print(f"\n  Could not load prior period dashboard for BI fallback: {_e}")
 
     # Calculate net purchases and inventory-method COGS per week/store
     for wi in week_data:
