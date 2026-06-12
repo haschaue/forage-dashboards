@@ -69,36 +69,41 @@ html = '''<!DOCTYPE html>
 <body>
 <div class="header">
   <h1>Forage Kitchen LLC &mdash; Period P&amp;L Dashboard</h1>
-  <p>Same Store Sales 2025 vs 2024 &bull; By Restaurant &bull; Net Sales &bull; Labor % &bull; COGS % &bull; Occupancy % &bull; EBITDA %</p>
+  <p>FY2026 YTD vs FY2025 &bull; 2-Yr Stacked Same Store Sales (Core Six) &bull; Net Sales &bull; Labor % &bull; COGS % &bull; Occupancy % &bull; EBITDA %</p>
 </div>
 <div class="controls">
-  <div class="ctrl-group"><label>Period Filter (KPIs)</label>
-    <select id="periodSelect"><option value="0">All Periods (YTD)</option>
-    <option value="12">P12</option><option value="11">P11</option><option value="10">P10</option>
-    <option value="9">P9</option><option value="8">P8</option><option value="7">P7</option>
-    <option value="6">P6</option><option value="5">P5</option><option value="4">P4</option>
+  <div class="ctrl-group"><label>Period Filter (Stack KPIs)</label>
+    <select id="periodSelect"><option value="0">YTD (P1-P5)</option>
+    <option value="5">P5</option><option value="4">P4</option>
     <option value="3">P3</option><option value="2">P2</option><option value="1">P1</option></select>
   </div>
 </div>
 <div class="main">
-  <div id="kpiRow" class="kpi-row"></div>
-  <div class="charts-grid">
-    <div class="chart-card full"><h3>Same Store Net Sales &mdash; 2025 vs 2024</h3><canvas id="sssChart" height="70"></canvas></div>
+  <div class="section-title">FY2026 YTD (P1-P5) vs FY2025 YTD (P1-P5) &mdash; All Stores</div>
+  <p class="note">Periods 1-5, 2026 compared to Periods 1-5, 2025</p>
+  <div id="ytd26KpiRow" class="kpi-row"></div>
+  <div class="table-card"><table id="ytd26Table"></table></div>
+  <div class="charts-grid" style="margin-top:32px">
+    <div class="chart-card full"><h3>Net Sales by Period &mdash; All Stores &bull; 2026 P1-P5</h3><canvas id="sssChart" height="70"></canvas></div>
     <div class="chart-card"><h3>Labor % by Period (Same Store)</h3><canvas id="laborChart" height="110"></canvas></div>
     <div class="chart-card"><h3>COGS % by Period (Same Store)</h3><canvas id="cogsChart" height="110"></canvas></div>
     <div class="chart-card"><h3>Occupancy % by Period (Same Store)</h3><canvas id="occChart" height="110"></canvas></div>
     <div class="chart-card"><h3>EBITDA % by Period (Same Store)</h3><canvas id="ebitdaChart" height="110"></canvas></div>
   </div>
-  <div class="section-title">Same Store Sales by Period</div>
-  <p class="note">Stores included: 8001-8006 all periods &bull; 8007 from P7 &bull; 8008 from P11 &bull; 8009 excluded (no 2024 history)</p>
+  <div class="section-title">Same Store Sales &mdash; 2-Yr Stack (Core Six: 8001-8006)</div>
+  <p class="note">Two-year stacked comp: 2026 vs 2024 over comparable periods &bull; only core-six stores have 2024 history</p>
+  <div id="kpiRow" class="kpi-row"></div>
+  <div class="section-title">2-Yr Stack by Period</div>
+  <p class="note">Core-six totals each period &bull; 2-Yr Stack % = (2026 / 2024) - 1 &bull; only computed where 2026 data exists</p>
   <div class="table-card"><table id="sssTable"></table></div>
-  <div class="section-title">Same Store Sales by Restaurant</div>
-  <p class="note">Each store compared over its eligible same-store periods only</p>
+  <div class="section-title">2-Yr Stack by Restaurant</div>
+  <p class="note">YTD P1-P5: 2024 / 2025 / 2026 comparable periods only</p>
   <div class="table-card"><table id="sssByStoreTable"></table></div>
-  <div class="section-title">Store Detail</div>
+  <div class="section-title">Store Detail &mdash; Trailing 12 Periods</div>
+  <p class="note">Columns ordered oldest (left) to most recent (right) &bull; 2025 periods labeled '25 &bull; 2026 periods labeled '26 (green) &bull; PY = same 12 periods one year earlier</p>
   <div class="store-tabs" id="storeTabs"></div>
   <div class="table-card"><table id="storeTable"></table></div>
-  <div class="section-title">Net Sales by Store &mdash; 2025</div>
+  <div class="section-title">Net Sales by Store &mdash; 2026</div>
   <div class="table-card"><table id="netSalesTable"></table></div>
 </div>
 <script>
@@ -106,7 +111,8 @@ const DATA = ''' + data_json + ''';
 
 const STORE_NAMES = {"8001":"State St","8002":"Hilldale","8003":"Monona","8004":"Middleton","8005":"Champaign","8006":"Whitefish Bay","8007":"Sun Prairie","8008":"Pewaukee","8009":"MKE Public Market","8010":"Brookfield"};
 const SSS_CONFIG = {"8001":[1,2,3,4,5,6,7,8,9,10,11,12],"8002":[1,2,3,4,5,6,7,8,9,10,11,12],"8003":[1,2,3,4,5,6,7,8,9,10,11,12],"8004":[1,2,3,4,5,6,7,8,9,10,11,12],"8005":[1,2,3,4,5,6,7,8,9,10,11,12],"8006":[1,2,3,4,5,6,7,8,9,10,11,12],"8007":[7,8,9,10,11,12],"8008":[11,12]};
-const STORE_IDS = ["8001","8002","8003","8004","8005","8006","8007","8008","8009"];
+const STORE_IDS = ["8001","8002","8003","8004","8005","8006","8007","8008","8009","8010"];
+const CORE_SIX = ["8001","8002","8003","8004","8005","8006"];
 const PERIODS = [1,2,3,4,5,6,7,8,9,10,11,12];
 
 let charts = {};
@@ -124,38 +130,60 @@ function sssP(metric,p){
   }
   return {v25:t25,v24:t24};
 }
+function stackP(metric,p){
+  let v24=0,v25=0,v26=0;
+  for(var i=0;i<CORE_SIX.length;i++){
+    var s=CORE_SIX[i];
+    v24+=gv(s+"_2024",metric,p);
+    v25+=gv(s+"_2025",metric,p);
+    v26+=gv(s+"_2026",metric,p);
+  }
+  return {v24:v24,v25:v25,v26:v26};
+}
+
+const FY26_PERIODS = [1,2,3,4,5];
+function consol26(metric,p){
+  if(!FY26_PERIODS.includes(p)) return null;
+  var t=0;
+  for(var i=0;i<STORE_IDS.length;i++){t+=gv(STORE_IDS[i]+"_2026",metric,p);}
+  return t||null;
+}
+function allStores(metric,p,yr){
+  var t=0;
+  for(var i=0;i<STORE_IDS.length;i++){t+=gv(STORE_IDS[i]+"_"+yr,metric,p);}
+  return t;
+}
 
 function renderKPIs(){
   const el=document.getElementById("kpiRow");
   const pf=parseInt(document.getElementById("periodSelect").value);
-  const ps=pf===0?PERIODS:[pf];
-  let ns25=0,ns24=0,cg25=0,cg24=0,lb25=0,lb24=0,oc25=0,oc24=0,eb25=0,eb24=0;
+  const ps=pf===0?FY26_PERIODS:[pf];
+  let ns24=0,ns25=0,ns26=0,eb26=0;
   for(const p of ps){
-    const a=sssP("Net Sales",p);ns25+=a.v25;ns24+=a.v24;
-    const b=sssP("COGS",p);cg25+=b.v25;cg24+=b.v24;
-    const c=sssP("Labor",p);lb25+=c.v25;lb24+=c.v24;
-    const d=sssP("Occupancy",p);oc25+=d.v25;oc24+=d.v24;
-    const e=sssP("EBITDA",p);eb25+=e.v25;eb24+=e.v24;
+    const r=stackP("Net Sales",p);ns24+=r.v24;ns25+=r.v25;ns26+=r.v26;
+    const e=stackP("EBITDA",p);eb26+=e.v26;
   }
-  const sc=ns24?(ns25-ns24)/ns24:0;
-  const lp25=ns25?lb25/ns25:0,lp24=ns24?lb24/ns24:0;
-  const cp25=ns25?cg25/ns25:0,cp24=ns24?cg24/ns24:0;
-  const op25=ns25?oc25/ns25:0,op24=ns24?oc24/ns24:0;
-  const ep25=ns25?eb25/ns25:0,ep24=ns24?eb24/ns24:0;
-  const pl=pf===0?"YTD":"P"+pf;
+  const stack=ns24?(ns26-ns24)/ns24:0;
+  const yoy26=ns25?(ns26-ns25)/ns25:0;
+  const yoy25=ns24?(ns25-ns24)/ns24:0;
+  const eb26pct=ns26?eb26/ns26:0;
+  const pl=pf===0?"YTD P1-P"+FY26_PERIODS[FY26_PERIODS.length-1]:"P"+pf;
   el.innerHTML=
-    '<div class="kpi-card"><div class="label">Net Sales '+pl+'</div><div class="value">'+fmt(ns25)+'</div>'+
-    '<div class="change '+(sc>=0?"up up-bg":"down down-bg")+'">'+fmtChg(sc)+' vs 2024</div>'+
-    '<div class="sub">2024: '+fmt(ns24)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">Labor % '+pl+'</div><div class="value">'+fmtPct(lp25)+'</div>'+
-    '<div class="change '+(lp25<=lp24?"up up-bg":"down down-bg")+'">'+(lp25<=lp24?"Improved":"Higher")+' vs '+fmtPct(lp24)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">COGS % '+pl+'</div><div class="value">'+fmtPct(cp25)+'</div>'+
-    '<div class="change '+(cp25<=cp24?"up up-bg":"down down-bg")+'">'+(cp25<=cp24?"Improved":"Higher")+' vs '+fmtPct(cp24)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">Occupancy % '+pl+'</div><div class="value">'+fmtPct(op25)+'</div>'+
-    '<div class="change '+(op25<=op24?"up up-bg":"down down-bg")+'">'+(op25<=op24?"Improved":"Higher")+' vs '+fmtPct(op24)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">EBITDA % '+pl+'</div><div class="value">'+fmtPct(ep25)+'</div>'+
-    '<div class="change '+(ep25>=ep24?"up up-bg":"down down-bg")+'">'+fmtChg(ep25-ep24)+' pts vs 2024</div>'+
-    '<div class="sub">EBITDA $: '+fmt(eb25)+'</div></div>';
+    '<div class="kpi-card"><div class="label">2-Yr Stack Net Sales '+pl+'</div><div class="value">'+fmtChg(stack)+'</div>'+
+    '<div class="change '+(stack>=0?"up up-bg":"down down-bg")+'">2026 vs 2024</div>'+
+    '<div class="sub">2026: '+fmt(ns26)+' &middot; 2024: '+fmt(ns24)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">26 vs 25 Growth</div><div class="value">'+fmtChg(yoy26)+'</div>'+
+    '<div class="change '+(yoy26>=0?"up up-bg":"down down-bg")+'">'+fmt(ns26-ns25)+' $</div>'+
+    '<div class="sub">2025: '+fmt(ns25)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">25 vs 24 Growth</div><div class="value">'+fmtChg(yoy25)+'</div>'+
+    '<div class="change '+(yoy25>=0?"up up-bg":"down down-bg")+'">'+fmt(ns25-ns24)+' $</div>'+
+    '<div class="sub">prior-yr leg</div></div>'+
+    '<div class="kpi-card"><div class="label">2026 EBITDA % '+pl+'</div><div class="value">'+fmtPct(eb26pct)+'</div>'+
+    '<div class="change '+(eb26>=0?"up up-bg":"down down-bg")+'">EBITDA $: '+fmt(eb26)+'</div>'+
+    '<div class="sub">Core six only</div></div>'+
+    '<div class="kpi-card"><div class="label">Avg Annual (Stack)</div><div class="value">'+fmtChg(Math.pow(1+stack,0.5)-1)+'</div>'+
+    '<div class="change up up-bg">2-yr CAGR</div>'+
+    '<div class="sub">geometric avg of 25v24 &amp; 26v25</div></div>';
 }
 
 function renderSSSChart(){
@@ -164,8 +192,9 @@ function renderSSSChart(){
   charts.sss=new Chart(ctx,{type:"bar",data:{
     labels:PERIODS.map(function(p){return "P"+p;}),
     datasets:[
-      {label:"2025",data:PERIODS.map(function(p){return sssP("Net Sales",p).v25;}),backgroundColor:"#6366f1",borderRadius:4,barPercentage:.4},
-      {label:"2024",data:PERIODS.map(function(p){return sssP("Net Sales",p).v24;}),backgroundColor:"rgba(99,102,241,.25)",borderRadius:4,barPercentage:.4}
+      {label:"2026",data:PERIODS.map(function(p){return consol26("Net Sales",p);}),backgroundColor:"#22c55e",borderRadius:4,barPercentage:.4},
+      {label:"2025",data:PERIODS.map(function(p){return allStores("Net Sales",p,2025);}),backgroundColor:"#6366f1",borderRadius:4,barPercentage:.4},
+      {label:"2024",data:PERIODS.map(function(p){return allStores("Net Sales",p,2024);}),backgroundColor:"rgba(99,102,241,.25)",borderRadius:4,barPercentage:.4}
     ]},options:{responsive:true,interaction:{mode:"index",intersect:false},
     plugins:{legend:{labels:{color:"#8b8d97",font:{size:11}}},tooltip:{callbacks:{label:function(c){return c.dataset.label+": $"+Math.round(c.raw).toLocaleString();}}}},
     scales:{x:{ticks:{color:"#8b8d97"},grid:{color:"#1a1d27"}},y:{ticks:{color:"#8b8d97",callback:function(v){return "$"+(v/1000).toFixed(0)+"k";}},grid:{color:"#2a2d3a"}}}}});
@@ -174,9 +203,11 @@ function renderSSSChart(){
 function renderPctChart(id,metric){
   const ctx=document.getElementById(id).getContext("2d");
   if(charts[id])charts[id].destroy();
+  const d26=PERIODS.map(function(p){var ns=consol26("Net Sales",p),mv=consol26(metric,p);return ns?(mv/ns*100):null;});
   const d25=PERIODS.map(function(p){var n=sssP("Net Sales",p),m=sssP(metric,p);return n.v25?(m.v25/n.v25*100):0;});
   const d24=PERIODS.map(function(p){var n=sssP("Net Sales",p),m=sssP(metric,p);return n.v24?(m.v24/n.v24*100):0;});
   charts[id]=new Chart(ctx,{type:"line",data:{labels:PERIODS.map(function(p){return "P"+p;}),datasets:[
+    {label:"2026",data:d26,borderColor:"#22c55e",backgroundColor:"transparent",tension:.3,pointRadius:6,pointBackgroundColor:"#22c55e",spanGaps:false},
     {label:"2025",data:d25,borderColor:"#6366f1",backgroundColor:"rgba(99,102,241,.08)",fill:true,tension:.3,pointRadius:4,pointBackgroundColor:"#6366f1"},
     {label:"2024",data:d24,borderColor:"#8b8d97",backgroundColor:"transparent",borderDash:[5,5],tension:.3,pointRadius:3}
   ]},options:{responsive:true,interaction:{mode:"index",intersect:false},
@@ -186,53 +217,75 @@ function renderPctChart(id,metric){
 
 function renderSSSTable(){
   var t=document.getElementById("sssTable");
-  var h='<thead><tr><th>Period</th><th>2025 Net Sales</th><th>2024 Net Sales</th><th>$ Change</th><th>% Change</th><th>Labor %</th><th>COGS %</th><th>Occup %</th><th>EBITDA %</th></tr></thead><tbody>';
-  var tn25=0,tn24=0,tc=0,tl=0,to=0,te=0;
+  var h='<thead><tr><th>Period</th><th>2024 Net Sales</th><th>2025 Net Sales</th><th>2026 Net Sales</th><th>25v24 %</th><th>26v25 %</th><th>2-Yr Stack %</th><th>Stack $ (26-24)</th></tr></thead><tbody>';
+  var t24=0,t25=0,t26=0;
   for(var i=0;i<PERIODS.length;i++){
     var p=PERIODS[i];
-    var ns=sssP("Net Sales",p),cg=sssP("COGS",p),lb=sssP("Labor",p),oc=sssP("Occupancy",p),eb=sssP("EBITDA",p);
-    tn25+=ns.v25;tn24+=ns.v24;tc+=cg.v25;tl+=lb.v25;to+=oc.v25;te+=eb.v25;
-    var dc=ns.v25-ns.v24,pc=ns.v24?(dc/ns.v24):0;
-    h+='<tr><td>P'+p+'</td><td>'+fmt(ns.v25)+'</td><td>'+fmt(ns.v24)+'</td>'+
-      '<td class="'+(dc>=0?"pos":"neg")+'">'+fmt(dc)+'</td><td class="'+(pc>=0?"pos":"neg")+'">'+fmtChg(pc)+'</td>'+
-      '<td>'+fmtPct(ns.v25?lb.v25/ns.v25:0)+'</td><td>'+fmtPct(ns.v25?cg.v25/ns.v25:0)+'</td>'+
-      '<td>'+fmtPct(ns.v25?oc.v25/ns.v25:0)+'</td><td class="'+(eb.v25>=0?"pos":"neg")+'">'+fmtPct(ns.v25?eb.v25/ns.v25:0)+'</td></tr>';
+    var r=stackP("Net Sales",p);
+    t24+=r.v24;t25+=r.v25;t26+=r.v26;
+    var has26=r.v26>0;
+    var c25v24=r.v24?(r.v25-r.v24)/r.v24:0;
+    var c26v25=r.v25?(r.v26-r.v25)/r.v25:0;
+    var cstack=r.v24?(r.v26-r.v24)/r.v24:0;
+    var dstack=r.v26-r.v24;
+    h+='<tr><td>P'+p+'</td>'+
+      '<td>'+fmt(r.v24)+'</td>'+
+      '<td>'+fmt(r.v25)+'</td>'+
+      '<td style="color:#22c55e;font-weight:600">'+(has26?fmt(r.v26):'<span class="na-val">-</span>')+'</td>'+
+      '<td class="'+(c25v24>=0?"pos":"neg")+'">'+fmtChg(c25v24)+'</td>'+
+      '<td class="'+(c26v25>=0?"pos":"neg")+'">'+(has26?fmtChg(c26v25):'<span class="na-val">-</span>')+'</td>'+
+      '<td class="'+(cstack>=0?"pos":"neg")+'" style="font-weight:600">'+(has26?fmtChg(cstack):'<span class="na-val">-</span>')+'</td>'+
+      '<td class="'+(dstack>=0?"pos":"neg")+'">'+(has26?fmt(dstack):'<span class="na-val">-</span>')+'</td></tr>';
   }
-  var tdc=tn25-tn24,tpc=tn24?(tdc/tn24):0;
-  h+='<tr class="total-row"><td>Total</td><td>'+fmt(tn25)+'</td><td>'+fmt(tn24)+'</td>'+
-    '<td class="'+(tdc>=0?"pos":"neg")+'">'+fmt(tdc)+'</td><td class="'+(tpc>=0?"pos":"neg")+'">'+fmtChg(tpc)+'</td>'+
-    '<td>'+fmtPct(tn25?tl/tn25:0)+'</td><td>'+fmtPct(tn25?tc/tn25:0)+'</td>'+
-    '<td>'+fmtPct(tn25?to/tn25:0)+'</td><td class="'+(te>=0?"pos":"neg")+'">'+fmtPct(tn25?te/tn25:0)+'</td></tr></tbody>';
+  var tc25v24=t24?(t25-t24)/t24:0;
+  var tc26v25=t25?(t26-t25)/t25:0;
+  var tcstack=t24?(t26-t24)/t24:0;
+  h+='<tr class="total-row"><td>Total</td>'+
+    '<td>'+fmt(t24)+'</td><td>'+fmt(t25)+'</td>'+
+    '<td style="color:#22c55e">'+fmt(t26)+'</td>'+
+    '<td class="'+(tc25v24>=0?"pos":"neg")+'">'+fmtChg(tc25v24)+'</td>'+
+    '<td class="'+(tc26v25>=0?"pos":"neg")+'">'+fmtChg(tc26v25)+'</td>'+
+    '<td class="'+(tcstack>=0?"pos":"neg")+'">'+fmtChg(tcstack)+'</td>'+
+    '<td class="'+((t26-t24)>=0?"pos":"neg")+'">'+fmt(t26-t24)+'</td></tr></tbody>';
   t.innerHTML=h;
 }
 
 function renderSSSByStore(){
   var t=document.getElementById("sssByStoreTable");
-  var h='<thead><tr><th>Store</th><th>SSS Periods</th><th>2025 Net Sales</th><th>2024 Net Sales</th><th>$ Change</th><th>% Change</th><th>Labor %</th><th>COGS %</th><th>Occup %</th><th>EBITDA %</th></tr></thead><tbody>';
-  var gn25=0,gn24=0,gc=0,gl=0,go=0,ge=0;
-  var entries=Object.entries(SSS_CONFIG);
-  for(var e=0;e<entries.length;e++){
-    var sid=entries[e][0],vps=entries[e][1];
-    var sn25=0,sn24=0,sc=0,sl=0,so=0,se=0;
-    for(var j=0;j<vps.length;j++){
-      var p=vps[j];
-      sn25+=gv(sid+"_2025","Net Sales",p);sn24+=gv(sid+"_2024","Net Sales",p);
-      sc+=gv(sid+"_2025","COGS",p);sl+=gv(sid+"_2025","Labor",p);
-      so+=gv(sid+"_2025","Occupancy",p);se+=gv(sid+"_2025","EBITDA",p);
+  var ytdLabel="YTD P1-P"+FY26_PERIODS[FY26_PERIODS.length-1];
+  var h='<thead><tr><th>Store</th><th>Periods</th><th>2024 Net Sales</th><th>2025 Net Sales</th><th>2026 Net Sales</th><th>25v24 %</th><th>26v25 %</th><th>2-Yr Stack %</th><th>Stack $</th></tr></thead><tbody>';
+  var g24=0,g25=0,g26=0;
+  for(var i=0;i<CORE_SIX.length;i++){
+    var sid=CORE_SIX[i];
+    var s24=0,s25=0,s26=0;
+    for(var j=0;j<FY26_PERIODS.length;j++){
+      var p=FY26_PERIODS[j];
+      s24+=gv(sid+"_2024","Net Sales",p);
+      s25+=gv(sid+"_2025","Net Sales",p);
+      s26+=gv(sid+"_2026","Net Sales",p);
     }
-    gn25+=sn25;gn24+=sn24;gc+=sc;gl+=sl;go+=so;ge+=se;
-    var dc=sn25-sn24,pc=sn24?(dc/sn24):0;
-    var pLabel=vps.length===12?"P1-P12":"P"+vps[0]+"-P"+vps[vps.length-1];
-    h+='<tr><td>'+sid+' - '+STORE_NAMES[sid]+'</td><td>'+pLabel+'</td><td>'+fmt(sn25)+'</td><td>'+fmt(sn24)+'</td>'+
-      '<td class="'+(dc>=0?"pos":"neg")+'">'+fmt(dc)+'</td><td class="'+(pc>=0?"pos":"neg")+'">'+fmtChg(pc)+'</td>'+
-      '<td>'+fmtPct(sn25?sl/sn25:0)+'</td><td>'+fmtPct(sn25?sc/sn25:0)+'</td>'+
-      '<td>'+fmtPct(sn25?so/sn25:0)+'</td><td class="'+(se>=0?"pos":"neg")+'">'+fmtPct(sn25?se/sn25:0)+'</td></tr>';
+    g24+=s24;g25+=s25;g26+=s26;
+    var c25v24=s24?(s25-s24)/s24:0;
+    var c26v25=s25?(s26-s25)/s25:0;
+    var cstack=s24?(s26-s24)/s24:0;
+    h+='<tr><td>'+sid+' - '+STORE_NAMES[sid]+'</td><td>'+ytdLabel+'</td>'+
+      '<td>'+fmt(s24)+'</td><td>'+fmt(s25)+'</td>'+
+      '<td style="color:#22c55e;font-weight:600">'+fmt(s26)+'</td>'+
+      '<td class="'+(c25v24>=0?"pos":"neg")+'">'+fmtChg(c25v24)+'</td>'+
+      '<td class="'+(c26v25>=0?"pos":"neg")+'">'+fmtChg(c26v25)+'</td>'+
+      '<td class="'+(cstack>=0?"pos":"neg")+'" style="font-weight:600">'+fmtChg(cstack)+'</td>'+
+      '<td class="'+((s26-s24)>=0?"pos":"neg")+'">'+fmt(s26-s24)+'</td></tr>';
   }
-  var gdc=gn25-gn24,gpc=gn24?(gdc/gn24):0;
-  h+='<tr class="total-row"><td>All Same Stores</td><td></td><td>'+fmt(gn25)+'</td><td>'+fmt(gn24)+'</td>'+
-    '<td class="'+(gdc>=0?"pos":"neg")+'">'+fmt(gdc)+'</td><td class="'+(gpc>=0?"pos":"neg")+'">'+fmtChg(gpc)+'</td>'+
-    '<td>'+fmtPct(gn25?gl/gn25:0)+'</td><td>'+fmtPct(gn25?gc/gn25:0)+'</td>'+
-    '<td>'+fmtPct(gn25?go/gn25:0)+'</td><td class="'+(ge>=0?"pos":"neg")+'">'+fmtPct(gn25?ge/gn25:0)+'</td></tr></tbody>';
+  var gc25v24=g24?(g25-g24)/g24:0;
+  var gc26v25=g25?(g26-g25)/g25:0;
+  var gcstack=g24?(g26-g24)/g24:0;
+  h+='<tr class="total-row"><td>Core Six Total</td><td>'+ytdLabel+'</td>'+
+    '<td>'+fmt(g24)+'</td><td>'+fmt(g25)+'</td>'+
+    '<td style="color:#22c55e">'+fmt(g26)+'</td>'+
+    '<td class="'+(gc25v24>=0?"pos":"neg")+'">'+fmtChg(gc25v24)+'</td>'+
+    '<td class="'+(gc26v25>=0?"pos":"neg")+'">'+fmtChg(gc26v25)+'</td>'+
+    '<td class="'+(gcstack>=0?"pos":"neg")+'">'+fmtChg(gcstack)+'</td>'+
+    '<td class="'+((g26-g24)>=0?"pos":"neg")+'">'+fmt(g26-g24)+'</td></tr></tbody>';
   t.innerHTML=h;
 }
 
@@ -250,66 +303,93 @@ function selectStore(id){activeStore=id;renderStoreTabs();renderStoreTable();}
 
 function renderStoreTable(){
   var t=document.getElementById("storeTable");
-  var id=activeStore,nm=STORE_NAMES[id],isSS=SSS_CONFIG.hasOwnProperty(id),vps=SSS_CONFIG[id]||[];
-  var h='<thead><tr><th>'+id+' - '+nm+'</th>';
-  for(var i=0;i<PERIODS.length;i++)h+='<th>P'+PERIODS[i]+'</th>';
-  h+='<th>Total</th></tr></thead><tbody>';
+  var id=activeStore,nm=STORE_NAMES[id];
 
-  // Net Sales 2025
-  var tot=0;
-  h+='<tr><td><strong>Net Sales 2025</strong></td>';
-  for(var i=0;i<PERIODS.length;i++){var v=gv(id+"_2025","Net Sales",PERIODS[i]);tot+=v;h+='<td>'+(v?fmt(v):'<span class="na-val">-</span>')+'</td>';}
-  h+='<td><strong>'+fmt(tot)+'</strong></td></tr>';
+  // Build trailing-12 sequence (oldest -> newest), ending at the most recent reported 2026 period
+  var lastP=FY26_PERIODS[FY26_PERIODS.length-1];
+  var ttm=[]; // {p, yr}
+  for(var pp=lastP+1; pp<=12; pp++) ttm.push({p:pp, yr:2025});
+  for(var pp=1; pp<=lastP; pp++) ttm.push({p:pp, yr:2026});
+  // Prior-year comparable: same calendar periods shifted back 1 year
+  var ttmPY=ttm.map(function(x){return {p:x.p, yr:x.yr-1};});
+  var nCols=ttm.length;
 
-  // Net Sales 2024
-  if(isSS){
-    var tot24=0;
-    h+='<tr><td>Net Sales 2024</td>';
-    for(var i=0;i<PERIODS.length;i++){var v=gv(id+"_2024","Net Sales",PERIODS[i]);tot24+=v;h+='<td>'+(v?fmt(v):'<span class="na-val">-</span>')+'</td>';}
-    h+='<td><strong>'+fmt(tot24)+'</strong></td></tr>';
-    h+='<tr><td>SSS % Change</td>';
-    var st25=0,st24=0;
-    for(var i=0;i<PERIODS.length;i++){
-      var p=PERIODS[i];
-      if(vps.includes(p)){var v25=gv(id+"_2025","Net Sales",p),v24=gv(id+"_2024","Net Sales",p);st25+=v25;st24+=v24;var c=v24?(v25-v24)/v24:0;h+='<td class="'+(c>=0?"pos":"neg")+'">'+fmtChg(c)+'</td>';}
-      else h+='<td class="na-val">N/A</td>';
-    }
-    var tc=st24?(st25-st24)/st24:0;
-    h+='<td class="'+(tc>=0?"pos":"neg")+'"><strong>'+fmtChg(tc)+'</strong></td></tr>';
-  } else {
-    h+='<tr><td>Net Sales 2024</td>';for(var i=0;i<12;i++)h+='<td class="na-val">N/A</td>';h+='<td class="na-val">N/A</td></tr>';
-    h+='<tr><td>SSS % Change</td>';for(var i=0;i<12;i++)h+='<td class="na-val">N/A</td>';h+='<td class="na-val">N/A</td></tr>';
+  var h='<thead><tr><th>'+id+' - '+nm+' &mdash; Trailing 12</th>';
+  for(var i=0;i<nCols;i++){
+    var yrTag=String(ttm[i].yr).slice(-2);
+    var hl=(ttm[i].yr===2026)?' style="color:#22c55e"':'';
+    h+='<th'+hl+'>P'+ttm[i].p+" '"+yrTag+'</th>';
   }
+  h+='<th>TTM</th></tr></thead><tbody>';
 
-  h+='<tr class="spacer-row"><td colspan="14"></td></tr>';
+  // TTM Net Sales
+  var totTTM=0,totPY=0;
+  h+='<tr style="color:#22c55e"><td><strong>TTM Net Sales</strong></td>';
+  for(var i=0;i<nCols;i++){
+    var v=gv(id+"_"+ttm[i].yr,"Net Sales",ttm[i].p);
+    totTTM+=v;
+    h+='<td>'+(v?fmt(v):'<span class="na-val">-</span>')+'</td>';
+  }
+  h+='<td><strong>'+fmt(totTTM)+'</strong></td></tr>';
 
-  // COGS %
-  var tm,tns;
+  // PY TTM Net Sales (same periods, 1 year back)
+  h+='<tr><td><strong>PY TTM Net Sales</strong></td>';
+  for(var i=0;i<nCols;i++){
+    var v=gv(id+"_"+ttmPY[i].yr,"Net Sales",ttmPY[i].p);
+    totPY+=v;
+    h+='<td>'+(v?fmt(v):'<span class="na-val">-</span>')+'</td>';
+  }
+  h+='<td><strong>'+fmt(totPY)+'</strong></td></tr>';
+
+  // YoY % Change (period-by-period)
+  h+='<tr><td>YoY %</td>';
+  for(var i=0;i<nCols;i++){
+    var cv=gv(id+"_"+ttm[i].yr,"Net Sales",ttm[i].p);
+    var pv=gv(id+"_"+ttmPY[i].yr,"Net Sales",ttmPY[i].p);
+    if(!cv||!pv){h+='<td class="na-val">-</td>';continue;}
+    var c=(cv-pv)/pv;
+    h+='<td class="'+(c>=0?"pos":"neg")+'">'+fmtChg(c)+'</td>';
+  }
+  var totYoY=totPY?(totTTM-totPY)/totPY:0;
+  h+='<td class="'+(totYoY>=0?"pos":"neg")+'"><strong>'+(totPY?fmtChg(totYoY):'-')+'</strong></td></tr>';
+
+  h+='<tr class="spacer-row"><td colspan="'+(nCols+2)+'"></td></tr>';
+
+  // COGS / Labor / Occupancy % (trailing 12)
   var metricList=[["COGS","COGS %"],["Labor","Labor %"],["Occupancy","Occupancy %"]];
   for(var m=0;m<metricList.length;m++){
-    tm=0;tns=0;
+    var tm=0,tns=0;
     h+='<tr><td>'+metricList[m][1]+'</td>';
-    for(var i=0;i<PERIODS.length;i++){
-      var ns=gv(id+"_2025","Net Sales",PERIODS[i]),mv=gv(id+"_2025",metricList[m][0],PERIODS[i]);tm+=mv;tns+=ns;
+    for(var i=0;i<nCols;i++){
+      var ns=gv(id+"_"+ttm[i].yr,"Net Sales",ttm[i].p);
+      var mv=gv(id+"_"+ttm[i].yr,metricList[m][0],ttm[i].p);
+      tm+=mv;tns+=ns;
       h+='<td>'+(ns?fmtPct(mv/ns):'<span class="na-val">-</span>')+'</td>';
     }
     h+='<td><strong>'+(tns?fmtPct(tm/tns):"-")+'</strong></td></tr>';
   }
 
-  // EBITDA %
+  // EBITDA % (trailing 12)
   var tebd=0,tens=0;
   h+='<tr><td>EBITDA %</td>';
-  for(var i=0;i<PERIODS.length;i++){
-    var ns=gv(id+"_2025","Net Sales",PERIODS[i]),ev=gv(id+"_2025","EBITDA",PERIODS[i]);tebd+=ev;tens+=ns;
+  for(var i=0;i<nCols;i++){
+    var ns=gv(id+"_"+ttm[i].yr,"Net Sales",ttm[i].p);
+    var ev=gv(id+"_"+ttm[i].yr,"EBITDA",ttm[i].p);
+    tebd+=ev;tens+=ns;
     var pv=ns?ev/ns:null;
     h+='<td class="'+(pv!==null?(pv>=0?"pos":"neg"):"")+'">'+(pv!==null?fmtPct(pv):'<span class="na-val">-</span>')+'</td>';
   }
   h+='<td class="'+(tebd>=0?"pos":"neg")+'"><strong>'+(tens?fmtPct(tebd/tens):"-")+'</strong></td></tr>';
 
-  // EBITDA $
+  // EBITDA $ (trailing 12)
   var tebd2=0;
   h+='<tr><td>EBITDA $</td>';
-  for(var i=0;i<PERIODS.length;i++){var ev=gv(id+"_2025","EBITDA",PERIODS[i]);tebd2+=ev;h+='<td class="'+(ev>=0?"pos":"neg")+'">'+fmt(ev)+'</td>';}
+  for(var i=0;i<nCols;i++){
+    var ns=gv(id+"_"+ttm[i].yr,"Net Sales",ttm[i].p);
+    var ev=gv(id+"_"+ttm[i].yr,"EBITDA",ttm[i].p);
+    tebd2+=ev;
+    h+='<td class="'+(ns?(ev>=0?"pos":"neg"):"")+'">'+(ns?fmt(ev):'<span class="na-val">-</span>')+'</td>';
+  }
   h+='<td class="'+(tebd2>=0?"pos":"neg")+'"><strong>'+fmt(tebd2)+'</strong></td></tr></tbody>';
   t.innerHTML=h;
 }
@@ -318,18 +398,88 @@ function renderNetSalesTable(){
   var t=document.getElementById("netSalesTable");
   var h='<thead><tr><th>Store</th>';
   for(var i=0;i<PERIODS.length;i++)h+='<th>P'+PERIODS[i]+'</th>';
-  h+='<th>Total</th></tr></thead><tbody>';
+  h+='<th>YTD</th></tr></thead><tbody>';
   var gt=[];for(var i=0;i<12;i++)gt.push(0);
   var grand=0;
   for(var s=0;s<STORE_IDS.length;s++){
     var id=STORE_IDS[s],rt=0;
     h+='<tr><td>'+id+' - '+STORE_NAMES[id]+'</td>';
-    for(var i=0;i<12;i++){var v=gv(id+"_2025","Net Sales",PERIODS[i]);rt+=v;gt[i]+=v;h+='<td>'+(v?fmt(v):'<span class="na-val">-</span>')+'</td>';}
+    for(var i=0;i<12;i++){var v=gv(id+"_2026","Net Sales",PERIODS[i]);rt+=v;gt[i]+=v;h+='<td>'+(v?fmt(v):'<span class="na-val">-</span>')+'</td>';}
     grand+=rt;h+='<td><strong>'+fmt(rt)+'</strong></td></tr>';
   }
   h+='<tr class="total-row"><td>All Stores</td>';
-  for(var i=0;i<12;i++)h+='<td>'+fmt(gt[i])+'</td>';
+  for(var i=0;i<12;i++)h+='<td>'+(gt[i]?fmt(gt[i]):'<span class="na-val">-</span>')+'</td>';
   h+='<td><strong>'+fmt(grand)+'</strong></td></tr></tbody>';
+  t.innerHTML=h;
+}
+
+function renderYtd26KPIs(){
+  var el=document.getElementById("ytd26KpiRow");
+  var ns26=0,ns25=0,cg26=0,cg25=0,lb26=0,lb25=0,oc26=0,oc25=0,eb26=0,eb25=0;
+  for(var i=0;i<STORE_IDS.length;i++){
+    var id=STORE_IDS[i];
+    for(var p=0;p<FY26_PERIODS.length;p++){
+      var pp=FY26_PERIODS[p];
+      ns26+=gv(id+"_2026","Net Sales",pp);ns25+=gv(id+"_2025","Net Sales",pp);
+      cg26+=gv(id+"_2026","COGS",pp);cg25+=gv(id+"_2025","COGS",pp);
+      lb26+=gv(id+"_2026","Labor",pp);lb25+=gv(id+"_2025","Labor",pp);
+      oc26+=gv(id+"_2026","Occupancy",pp);oc25+=gv(id+"_2025","Occupancy",pp);
+      eb26+=gv(id+"_2026","EBITDA",pp);eb25+=gv(id+"_2025","EBITDA",pp);
+    }
+  }
+  var sc=ns25?(ns26-ns25)/ns25:0;
+  var lp26=ns26?lb26/ns26:0,lp25=ns25?lb25/ns25:0;
+  var cp26=ns26?cg26/ns26:0,cp25=ns25?cg25/ns25:0;
+  var op26=ns26?oc26/ns26:0,op25=ns25?oc25/ns25:0;
+  var ep26=ns26?eb26/ns26:0,ep25=ns25?eb25/ns25:0;
+  el.innerHTML=
+    '<div class="kpi-card"><div class="label">YTD 2026 Net Sales</div><div class="value">'+fmt(ns26)+'</div>'+
+    '<div class="change '+(sc>=0?"up up-bg":"down down-bg")+'">'+fmtChg(sc)+' vs YTD 2025</div>'+
+    '<div class="sub">YTD 2025: '+fmt(ns25)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">YTD Labor %</div><div class="value">'+fmtPct(lp26)+'</div>'+
+    '<div class="change '+(lp26<=lp25?"up up-bg":"down down-bg")+'">'+(lp26<=lp25?"Improved":"Higher")+' vs '+fmtPct(lp25)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">YTD COGS %</div><div class="value">'+fmtPct(cp26)+'</div>'+
+    '<div class="change '+(cp26<=cp25?"up up-bg":"down down-bg")+'">'+(cp26<=cp25?"Improved":"Higher")+' vs '+fmtPct(cp25)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">YTD Occupancy %</div><div class="value">'+fmtPct(op26)+'</div>'+
+    '<div class="change '+(op26<=op25?"up up-bg":"down down-bg")+'">'+(op26<=op25?"Improved":"Higher")+' vs '+fmtPct(op25)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">YTD EBITDA %</div><div class="value">'+fmtPct(ep26)+'</div>'+
+    '<div class="change '+(ep26>=ep25?"up up-bg":"down down-bg")+'">'+fmtChg(ep26-ep25)+' pts vs YTD 2025</div>'+
+    '<div class="sub">EBITDA $: '+fmt(eb26)+'</div></div>';
+}
+
+function renderYtd26Table(){
+  var t=document.getElementById("ytd26Table");
+  var h='<thead><tr><th>Store</th><th>Net Sales 2026</th><th>Net Sales 2025</th><th>% Chg</th><th>Labor %</th><th>COGS %</th><th>Occup %</th><th>EBITDA %</th><th>EBITDA $</th></tr></thead><tbody>';
+  var tns26=0,tns25=0,tcg=0,tlb=0,toc=0,teb=0;
+  for(var i=0;i<STORE_IDS.length;i++){
+    var id=STORE_IDS[i];
+    var sns26=0,sns25=0,scg=0,slb=0,soc=0,seb=0;
+    for(var p=0;p<FY26_PERIODS.length;p++){
+      var pp=FY26_PERIODS[p];
+      sns26+=gv(id+"_2026","Net Sales",pp);sns25+=gv(id+"_2025","Net Sales",pp);
+      scg+=gv(id+"_2026","COGS",pp);slb+=gv(id+"_2026","Labor",pp);
+      soc+=gv(id+"_2026","Occupancy",pp);seb+=gv(id+"_2026","EBITDA",pp);
+    }
+    tns26+=sns26;tns25+=sns25;tcg+=scg;tlb+=slb;toc+=soc;teb+=seb;
+    var pc=sns25?(sns26-sns25)/sns25:0;
+    h+='<tr><td>'+id+' - '+STORE_NAMES[id]+'</td>'+
+      '<td>'+(sns26?fmt(sns26):'<span class="na-val">-</span>')+'</td>'+
+      '<td>'+(sns25?fmt(sns25):'<span class="na-val">-</span>')+'</td>'+
+      '<td class="'+(pc>=0?"pos":"neg")+'">'+(sns25&&sns26?fmtChg(pc):'<span class="na-val">N/A</span>')+'</td>'+
+      '<td>'+(sns26?fmtPct(slb/sns26):"-")+'</td>'+
+      '<td>'+(sns26?fmtPct(scg/sns26):"-")+'</td>'+
+      '<td>'+(sns26?fmtPct(soc/sns26):"-")+'</td>'+
+      '<td class="'+(seb>=0?"pos":"neg")+'">'+(sns26?fmtPct(seb/sns26):"-")+'</td>'+
+      '<td class="'+(seb>=0?"pos":"neg")+'">'+fmt(seb)+'</td></tr>';
+  }
+  var tpc=tns25?(tns26-tns25)/tns25:0;
+  h+='<tr class="total-row"><td>All Stores</td>'+
+    '<td>'+fmt(tns26)+'</td><td>'+fmt(tns25)+'</td>'+
+    '<td class="'+(tpc>=0?"pos":"neg")+'">'+fmtChg(tpc)+'</td>'+
+    '<td>'+fmtPct(tns26?tlb/tns26:0)+'</td><td>'+fmtPct(tns26?tcg/tns26:0)+'</td>'+
+    '<td>'+fmtPct(tns26?toc/tns26:0)+'</td>'+
+    '<td class="'+(teb>=0?"pos":"neg")+'">'+fmtPct(tns26?teb/tns26:0)+'</td>'+
+    '<td class="'+(teb>=0?"pos":"neg")+'">'+fmt(teb)+'</td></tr></tbody>';
   t.innerHTML=h;
 }
 
@@ -338,6 +488,7 @@ function renderAll(){
   renderPctChart("laborChart","Labor");renderPctChart("cogsChart","COGS");
   renderPctChart("occChart","Occupancy");renderPctChart("ebitdaChart","EBITDA");
   renderSSSTable();renderSSSByStore();renderStoreTabs();renderStoreTable();renderNetSalesTable();
+  renderYtd26KPIs();renderYtd26Table();
 }
 document.getElementById("periodSelect").addEventListener("change",renderKPIs);
 renderAll();
