@@ -33,6 +33,8 @@ html = '''<!DOCTYPE html>
   .ctrl-group select:hover{border-color:var(--accent);}
   .main{padding:24px 32px;max-width:1600px;margin:0 auto;}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
+  .kpi-row.six{grid-template-columns:repeat(6,1fr);}
+  .kpi-card.featured{border:1.5px solid var(--green);background:linear-gradient(180deg, rgba(34,197,94,.06), var(--card));}
   .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
   .kpi-card:hover{border-color:var(--accent);}
   .kpi-card .label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:6px;}
@@ -81,7 +83,7 @@ html = '''<!DOCTYPE html>
 <div class="main">
   <div class="section-title">FY2026 YTD (P1-P5) vs FY2025 YTD (P1-P5) &mdash; All Stores</div>
   <p class="note">Periods 1-5, 2026 compared to Periods 1-5, 2025</p>
-  <div id="ytd26KpiRow" class="kpi-row"></div>
+  <div id="ytd26KpiRow" class="kpi-row six"></div>
   <div class="table-card"><table id="ytd26Table"></table></div>
   <div class="charts-grid" style="margin-top:32px">
     <div class="chart-card full"><h3>Net Sales by Period &mdash; All Stores &bull; 2026 P1-P5</h3><canvas id="sssChart" height="70"></canvas></div>
@@ -416,8 +418,11 @@ function renderNetSalesTable(){
 function renderYtd26KPIs(){
   var el=document.getElementById("ytd26KpiRow");
   var ns26=0,ns25=0,cg26=0,cg25=0,lb26=0,lb25=0,oc26=0,oc25=0,eb26=0,eb25=0;
+  // SSS = stores with non-zero Net Sales in both years across the YTD periods
+  var sssNs26=0,sssNs25=0,sssCount=0,sssStores=[];
   for(var i=0;i<STORE_IDS.length;i++){
     var id=STORE_IDS[i];
+    var sNs26=0,sNs25=0;
     for(var p=0;p<FY26_PERIODS.length;p++){
       var pp=FY26_PERIODS[p];
       ns26+=gv(id+"_2026","Net Sales",pp);ns25+=gv(id+"_2025","Net Sales",pp);
@@ -425,14 +430,21 @@ function renderYtd26KPIs(){
       lb26+=gv(id+"_2026","Labor",pp);lb25+=gv(id+"_2025","Labor",pp);
       oc26+=gv(id+"_2026","Occupancy",pp);oc25+=gv(id+"_2025","Occupancy",pp);
       eb26+=gv(id+"_2026","EBITDA",pp);eb25+=gv(id+"_2025","EBITDA",pp);
+      sNs26+=gv(id+"_2026","Net Sales",pp);sNs25+=gv(id+"_2025","Net Sales",pp);
     }
+    if(sNs26>0 && sNs25>0){sssNs26+=sNs26;sssNs25+=sNs25;sssCount++;sssStores.push(id);}
   }
+  var sssPct=sssNs25?(sssNs26-sssNs25)/sssNs25:0;
   var sc=ns25?(ns26-ns25)/ns25:0;
   var lp26=ns26?lb26/ns26:0,lp25=ns25?lb25/ns25:0;
   var cp26=ns26?cg26/ns26:0,cp25=ns25?cg25/ns25:0;
   var op26=ns26?oc26/ns26:0,op25=ns25?oc25/ns25:0;
   var ep26=ns26?eb26/ns26:0,ep25=ns25?eb25/ns25:0;
+  var lastP=FY26_PERIODS[FY26_PERIODS.length-1];
   el.innerHTML=
+    '<div class="kpi-card featured"><div class="label">YTD Same Store Sales</div><div class="value '+(sssPct>=0?"up":"down")+'">'+fmtChg(sssPct)+'</div>'+
+    '<div class="change '+(sssPct>=0?"up up-bg":"down down-bg")+'">P1-P'+lastP+' &middot; '+sssCount+' stores</div>'+
+    '<div class="sub">26: '+fmt(sssNs26)+' &middot; 25: '+fmt(sssNs25)+'</div></div>'+
     '<div class="kpi-card"><div class="label">YTD 2026 Net Sales</div><div class="value">'+fmt(ns26)+'</div>'+
     '<div class="change '+(sc>=0?"up up-bg":"down down-bg")+'">'+fmtChg(sc)+' vs YTD 2025</div>'+
     '<div class="sub">YTD 2025: '+fmt(ns25)+'</div></div>'+
