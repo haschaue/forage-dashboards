@@ -68,8 +68,10 @@ COGS_COVERAGE_SOURCE = "P1 2026"  # Period used to calibrate
 # Transaction types we care about
 COGS_TXN_TYPES = ["AP Invoice", "AP Credit Memo", "Stock Count", "Waste Log", "Item Transfer"]
 
-# Store display names
-STORE_NAMES = {k: v["name"] for k, v in SSS_CONFIG.items() if v.get("sss_start_period") is not None}
+# Store display names - include all stores in SSS_CONFIG. sss_start_period is
+# a same-store-sales concept (not a COGS-eligibility one), so it should not
+# filter which stores appear on the COGS dashboard.
+STORE_NAMES = {k: v["name"] for k, v in SSS_CONFIG.items()}
 
 
 # ============================================================
