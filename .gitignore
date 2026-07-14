@@ -2,6 +2,7 @@
 toast_config.py
 r365_config.py
 gsc_credentials.json
+meta_config.py
 
 # Office lock files
 .~lock.*

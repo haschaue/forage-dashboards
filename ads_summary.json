@@ -172,5 +172,110 @@
    "roas_delta": null,
    "cpa": null
   }
- ]
+ ],
+ "meta": {
+  "account": "act_35967094",
+  "current": {
+   "campaigns": [
+    {
+     "name": "Berry Good Summer Salad 0626 Campaign",
+     "spend": 179.66,
+     "impressions": 80071,
+     "clicks": 820,
+     "link_clicks": 657,
+     "lpv": 419
+    },
+    {
+     "name": "Branding traffic 0626 Campaign",
+     "spend": 163.43,
+     "impressions": 41426,
+     "clicks": 900,
+     "link_clicks": 751,
+     "lpv": 557
+    },
+    {
+     "name": "Catering Traffic 0326 video",
+     "spend": 163.31,
+     "impressions": 21530,
+     "clicks": 621,
+     "link_clicks": 344,
+     "lpv": 270
+    },
+    {
+     "name": "Rewards video Traffic 0126",
+     "spend": 143.06,
+     "impressions": 38595,
+     "clicks": 940,
+     "link_clicks": 608,
+     "lpv": 349
+    },
+    {
+     "name": "falafel launch 0706",
+     "spend": 40.4,
+     "impressions": 8299,
+     "clicks": 141,
+     "link_clicks": 119,
+     "lpv": 107
+    }
+   ],
+   "totals": {
+    "spend": 689.86,
+    "impressions": 189921,
+    "link_clicks": 2479,
+    "lpv": 1702,
+    "cost_per_lpv": 0.41
+   }
+  },
+  "previous": {
+   "campaigns": [
+    {
+     "name": "Catering Traffic 0326 video",
+     "spend": 223.59,
+     "impressions": 36433,
+     "clicks": 1229,
+     "link_clicks": 655,
+     "lpv": 435
+    },
+    {
+     "name": "Rewards video Traffic 0126",
+     "spend": 195.75,
+     "impressions": 37499,
+     "clicks": 1398,
+     "link_clicks": 880,
+     "lpv": 439
+    },
+    {
+     "name": "brookfield open video traffic Campaign",
+     "spend": 58.2,
+     "impressions": 10257,
+     "clicks": 820,
+     "link_clicks": 453,
+     "lpv": 228
+    },
+    {
+     "name": "Branding traffic 0626 Campaign",
+     "spend": 34.46,
+     "impressions": 9546,
+     "clicks": 225,
+     "link_clicks": 184,
+     "lpv": 137
+    },
+    {
+     "name": "Rewards video Traffic Champaign 0326",
+     "spend": 7.94,
+     "impressions": 1252,
+     "clicks": 29,
+     "link_clicks": 18,
+     "lpv": 11
+    }
+   ],
+   "totals": {
+    "spend": 519.94,
+    "impressions": 94987,
+    "link_clicks": 2190,
+    "lpv": 1250,
+    "cost_per_lpv": 0.42
+   }
+  }
+ }
 }

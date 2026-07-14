@@ -15,6 +15,11 @@
     "detail": "Spend fell $9,720 → $7,280 and conversion value fell $34,611 → $27,574, but ROAS improved 3.56 → 3.79 and CPA held steady. The cut is costing roughly $7,000 in tracked conversion value per 28 days. If the budget reduction was intentional, no action; if not, check for depleted shared budgets or pacing caps. July 4 was also a near-zero day (conv value $345), which drags the period."
   },
   {
+    "priority": "medium",
+    "title": "Meta ads have no conversion tracking — $690/period flying blind",
+    "detail": "All five Meta campaigns are traffic-objective with no purchase events, so unlike Google (ROAS 3.79) there's no way to see what the ~$690/period buys beyond landing page views ($0.41 each, which is efficient as traffic goes). Adding the Meta Pixel purchase/online-order events to the site (or Toast order confirmation page) would let Meta report conversion value and make the two channels comparable. Note the spend also sits on a legacy personal-named ad account ('Darlene Murphy') — worth migrating to the business account at some point."
+  },
+  {
     "priority": "low",
     "title": "State Street: weak CTR but improving returns",
     "detail": "CTR is 1.65% (2,876 clicks on 174k impressions) vs ~3.2% account average — the campaign shows a lot but attracts few clicks. ROAS did improve 2.64 → 3.36 after its budget cut. Worth a creative/asset refresh (imagery and headlines targeting the State St/campus audience) before adding any budget back. This mirrors the SEO finding that the State Street page also underperforms organically."

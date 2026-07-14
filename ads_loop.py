@@ -88,6 +88,66 @@ def totals(campaigns):
             "cpc": round(cost / clicks, 2) if clicks else 0}
 
 
+def fetch_meta(start, end, prev_start, prev_end):
+    """Pull Meta Ads campaign insights directly from the Graph API.
+
+    Meta campaigns are traffic-objective (no purchase tracking), so the metrics
+    are spend, link clicks, and landing page views — no ROAS.
+    Returns None (with a warning) if meta_config or the API is unavailable.
+    """
+    try:
+        from meta_config import META_ACCESS_TOKEN, META_API_VERSION, META_ACTIVE_ACCOUNT
+    except ImportError:
+        print("  [meta] meta_config.py not found — skipping Meta section")
+        return None
+    import ssl
+    import urllib.parse
+    import urllib.request
+    ctx = ssl.create_default_context()
+    base = f"https://graph.facebook.com/{META_API_VERSION}"
+
+    def get(path, **params):
+        params["access_token"] = META_ACCESS_TOKEN
+        url = f"{base}/{path}?{urllib.parse.urlencode(params)}"
+        with urllib.request.urlopen(url, context=ctx) as r:
+            return json.load(r)
+
+    def campaigns(since, until):
+        rows = get(f"{META_ACTIVE_ACCOUNT}/insights",
+                   fields="campaign_name,spend,impressions,clicks,actions",
+                   time_range=json.dumps({"since": since, "until": until}),
+                   level="campaign", limit=100).get("data", [])
+        out = []
+        for r in rows:
+            actions = {a["action_type"]: float(a["value"]) for a in r.get("actions", [])}
+            out.append({"name": r["campaign_name"],
+                        "spend": round(float(r.get("spend", 0)), 2),
+                        "impressions": int(r.get("impressions", 0)),
+                        "clicks": int(r.get("clicks", 0)),
+                        "link_clicks": int(actions.get("link_click", 0)),
+                        "lpv": int(actions.get("landing_page_view", 0))})
+        return sorted(out, key=lambda c: -c["spend"])
+
+    def meta_totals(camps):
+        spend = sum(c["spend"] for c in camps)
+        lpv = sum(c["lpv"] for c in camps)
+        return {"spend": round(spend, 2),
+                "impressions": sum(c["impressions"] for c in camps),
+                "link_clicks": sum(c["link_clicks"] for c in camps),
+                "lpv": lpv,
+                "cost_per_lpv": round(spend / lpv, 2) if lpv else None}
+
+    try:
+        cur = campaigns(start, end)
+        prev = campaigns(prev_start, prev_end)
+        return {"account": META_ACTIVE_ACCOUNT,
+                "current": {"campaigns": cur, "totals": meta_totals(cur)},
+                "previous": {"campaigns": prev, "totals": meta_totals(prev)}}
+    except Exception as e:
+        print(f"  [meta] fetch failed ({e}) — skipping Meta section")
+        return None
+
+
 def ingest(cur_file, prev_file, daily_file):
     start, end, prev_start, prev_end = date_ranges()
     with open(cur_file, encoding="utf-8") as f:
@@ -105,6 +165,7 @@ def ingest(cur_file, prev_file, daily_file):
         "previous": {"start": prev_start, "end": prev_end, "campaigns": prev_campaigns,
                      "totals": totals(prev_campaigns),
                      "by_date": parse_daily(daily_raw, prev_start, prev_end)},
+        "meta": fetch_meta(start, end, prev_start, prev_end),
     }
     os.makedirs(HISTORY_DIR, exist_ok=True)
     snap_file = os.path.join(HISTORY_DIR, f"snapshot_{date.today().isoformat()}.json")
@@ -133,7 +194,8 @@ def ingest(cur_file, prev_file, daily_file):
                "prev_period": {"start": prev_start, "end": prev_end},
                "totals": snapshot["current"]["totals"],
                "totals_prev": snapshot["previous"]["totals"],
-               "campaigns": comparison}
+               "campaigns": comparison,
+               "meta": snapshot["meta"]}
     with open(SUMMARY_FILE, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=1)
 
@@ -146,6 +208,12 @@ def ingest(cur_file, prev_file, daily_file):
         flag = " [ZERO SPEND, ENABLED]" if c["cost"] == 0 else ""
         print(f"  {c['name']:<32} spend ${c['cost']:>8,.0f} ({c['cost_delta']:+8,.0f})  "
               f"ROAS {c['roas']:>5} (prev {c['roas_prev']}){flag}")
+    if snapshot["meta"]:
+        mt = snapshot["meta"]["current"]["totals"]
+        mtp = snapshot["meta"]["previous"]["totals"]
+        print(f"  Meta: spend ${mt['spend']:,.0f} ({mt['spend']-mtp['spend']:+,.0f})   "
+              f"LPVs {mt['lpv']:,} ({mt['lpv']-mtp['lpv']:+,})   "
+              f"cost/LPV ${mt['cost_per_lpv']} (prev ${mtp['cost_per_lpv']})")
     print(f"  Snapshot: {snap_file}")
     print(f"  Summary:  {SUMMARY_FILE}")
 
@@ -260,6 +328,47 @@ def render():
                       f'<td>{fmt_delta(round(roas - roas_prev, 2), decimals=2) if roas_prev else "–"}</td>'
                       f'<td>{"$%.2f" % cpa if cpa else "–"}</td></tr>')
 
+    meta_html = ""
+    meta = snap.get("meta")
+    if meta:
+        mt, mtp = meta["current"]["totals"], meta["previous"]["totals"]
+        cplv_delta = (round(mt["cost_per_lpv"] - mtp["cost_per_lpv"], 2)
+                      if mt["cost_per_lpv"] is not None and mtp["cost_per_lpv"] is not None else None)
+        meta_kpis = "".join([
+            kpi("Meta Spend", f"${mt['spend']:,.0f}", fmt_delta(round(mt["spend"] - mtp["spend"]), money=True)),
+            kpi("Link Clicks", f"{mt['link_clicks']:,}", fmt_delta(mt["link_clicks"] - mtp["link_clicks"])),
+            kpi("Landing Page Views", f"{mt['lpv']:,}", fmt_delta(mt["lpv"] - mtp["lpv"])),
+            kpi("Cost / LPV", f"${mt['cost_per_lpv']}" if mt["cost_per_lpv"] is not None else "–",
+                fmt_delta(cplv_delta, invert=True, money=True, decimals=2)),
+        ])
+        prev_meta = {c["name"]: c for c in meta["previous"]["campaigns"]}
+        meta_rows = ""
+        for c in meta["current"]["campaigns"]:
+            p = prev_meta.get(c["name"])
+            cplv = c["spend"] / c["lpv"] if c["lpv"] else None
+            meta_rows += (f'<tr><td>{c["name"]}</td>'
+                          f'<td>${c["spend"]:,.2f}</td>'
+                          f'<td>{fmt_delta(round(c["spend"] - (p["spend"] if p else 0)), money=True)}</td>'
+                          f'<td>{c["impressions"]:,}</td>'
+                          f'<td>{c["link_clicks"]:,}</td>'
+                          f'<td>{c["lpv"]:,}</td>'
+                          f'<td>{"$%.2f" % cplv if cplv else "–"}</td></tr>')
+        gone = [p for name, p in prev_meta.items()
+                if name not in {c["name"] for c in meta["current"]["campaigns"]}]
+        for p in sorted(gone, key=lambda p: -p["spend"]):
+            meta_rows += (f'<tr style="opacity:0.55"><td>{p["name"]} '
+                          f'<span style="color:#94a3b8;font-size:11px">ENDED</span></td>'
+                          f'<td>$0.00</td><td>{fmt_delta(round(-p["spend"]), money=True)}</td>'
+                          f'<td>–</td><td>–</td><td>–</td><td>–</td></tr>')
+        meta_html = f"""
+  <div class="section-header">Meta Ads (28 days vs prior)</div>
+  <div class="kpi-grid">{meta_kpis}</div>
+  <div style="height:16px"></div>
+  <table class="store-table"><thead><tr>
+    <th>Campaign</th><th>Spend</th><th>&Delta; Spend</th><th>Impressions</th><th>Link Clicks</th><th>Landing Views</th><th>Cost/LPV</th>
+  </tr></thead><tbody>{meta_rows}</tbody></table>
+  <div style="font-size:12px;color:#94a3b8;margin-top:8px">Meta campaigns are traffic-objective with no purchase tracking — no ROAS available. Compare on cost per landing page view.</div>"""
+
     html = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -305,10 +414,11 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
   <div class="section-header">Recommendations</div>
   {rec_html}
 
-  <div class="section-header">Campaigns (28 days vs prior)</div>
+  <div class="section-header">Google Ads Campaigns (28 days vs prior)</div>
   <table class="store-table"><thead><tr>
     <th>Campaign</th><th>Spend</th><th>&Delta; Spend</th><th>Conv</th><th>Conv Value</th><th>ROAS</th><th>&Delta; ROAS</th><th>CPA</th>
   </tr></thead><tbody>{camp_rows}</tbody></table>
+{meta_html}
 </div>
 </body></html>"""
     with open(DASHBOARD_FILE, "w", encoding="utf-8") as f:
