@@ -1,0 +1,27 @@
+[
+  {
+    "priority": "high",
+    "title": "Champaign page lost ~2.5 ranking positions (3.7 → 6.2)",
+    "detail": "The /locations/champaign-il page dropped from avg position 3.7 to 6.2 and impressions fell 49% (9,625 → 4,922) — the only location with a real ranking loss, not a demand dip. Check the Google Business Profile is healthy (reviews, hours, photos), verify the page title/H1 still targets 'Champaign', and look for a new competitor ranking above. Worth a look this week before it slips to page 2 for local terms."
+  },
+  {
+    "priority": "high",
+    "title": "Pewaukee clicks down 29% (400 → 283)",
+    "detail": "Biggest click loss of any location. Ranking is fine (position improved 4.0 → 3.7), so this is demand or SERP-layout driven: 'forage kitchen pewaukee' clicks fell 411 → 377 and 'forage pewaukee' 32 → 12. Check the Google Business Profile for anything stale, and compare against Toast sales for the same window — if in-store sales held up, this is search-only and worth investigating; if sales dipped too, it's demand."
+  },
+  {
+    "priority": "medium",
+    "title": "Non-branded is only 7.6% of clicks despite 208k impressions",
+    "detail": "Blog posts sit at positions 5–10 on huge-volume terms: fermented-food (335k impr, pos 8.5), kale-vs-spinach (89k impr, pos 7.1), forbidden-rice (92k impr, pos 8.1). Moving even one of these into the top 5 would meaningfully grow non-branded traffic. Refresh the top 2–3 posts: update the content date, add FAQ schema, tighten the title tag to match the query, and add internal links from high-authority pages (homepage, menu)."
+  },
+  {
+    "priority": "medium",
+    "title": "'Near me' queries slipping",
+    "detail": "'food near me' fell from position 10.6 to 11.8 (10k impressions) and 'restaurants near me' from 13.5 to 15.4 (4k impressions). These are high-intent local queries. Make sure every location page has LocalBusiness structured data (hours, address, geo, menu link) and an embedded map — that's what Google uses to rank these."
+  },
+  {
+    "priority": "low",
+    "title": "State Street page underperforms every other location",
+    "detail": "Only 51 clicks vs 240–570 for other locations, at position 4.2. Madison intent ('forage kitchen madison', 896 clicks at pos 1.0) resolves to the homepage instead of a Madison location page. Add prominent homepage links to the State Street and Hilldale pages for Madison searchers, and consider enriching the State Street page (neighborhood keywords, photos, parking info)."
+  }
+]
