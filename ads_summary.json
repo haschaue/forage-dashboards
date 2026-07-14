@@ -1,0 +1,176 @@
+{
+ "fetched": "2026-07-14",
+ "period": {
+  "start": "2026-06-14",
+  "end": "2026-07-11"
+ },
+ "prev_period": {
+  "start": "2026-05-17",
+  "end": "2026-06-13"
+ },
+ "totals": {
+  "cost": 7279.84,
+  "clicks": 28034,
+  "impressions": 1096693,
+  "conversions": 16043.5,
+  "conv_value": 27573.79,
+  "roas": 3.79,
+  "cpa": 0.45,
+  "cpc": 0.26
+ },
+ "totals_prev": {
+  "cost": 9719.62,
+  "clicks": 33746,
+  "impressions": 1126789,
+  "conversions": 21238.8,
+  "conv_value": 34611.1,
+  "roas": 3.56,
+  "cpa": 0.46,
+  "cpc": 0.29
+ },
+ "campaigns": [
+  {
+   "name": "PMax_Cube_Milwaukee",
+   "status": "ENABLED",
+   "cost": 1135.03,
+   "cost_prev": 614.86,
+   "cost_delta": 520.17,
+   "conversions": 1700.8,
+   "conv_value": 2844.03,
+   "roas": 2.51,
+   "roas_prev": 2.41,
+   "roas_delta": 0.1,
+   "cpa": 0.67
+  },
+  {
+   "name": "PMax_Cube_Brookfield",
+   "status": "ENABLED",
+   "cost": 966.48,
+   "cost_prev": 1438.36,
+   "cost_delta": -471.88,
+   "conversions": 2806.1,
+   "conv_value": 4603.8,
+   "roas": 4.76,
+   "roas_prev": 3.87,
+   "roas_delta": 0.9,
+   "cpa": 0.34
+  },
+  {
+   "name": "PMax_Cube_Hilldale_Madison",
+   "status": "ENABLED",
+   "cost": 959.62,
+   "cost_prev": 745.48,
+   "cost_delta": 214.14,
+   "conversions": 1956.5,
+   "conv_value": 3811.87,
+   "roas": 3.97,
+   "roas_prev": 2.97,
+   "roas_delta": 1.0,
+   "cpa": 0.49
+  },
+  {
+   "name": "PMax_Cube_Pewaukee",
+   "status": "ENABLED",
+   "cost": 825.68,
+   "cost_prev": 1127.04,
+   "cost_delta": -301.36,
+   "conversions": 1828.8,
+   "conv_value": 3065.16,
+   "roas": 3.71,
+   "roas_prev": 3.83,
+   "roas_delta": -0.11,
+   "cpa": 0.45
+  },
+  {
+   "name": "PMax_Cube_Monona",
+   "status": "ENABLED",
+   "cost": 692.56,
+   "cost_prev": 908.15,
+   "cost_delta": -215.59,
+   "conversions": 1453.5,
+   "conv_value": 2667.86,
+   "roas": 3.85,
+   "roas_prev": 3.37,
+   "roas_delta": 0.48,
+   "cpa": 0.48
+  },
+  {
+   "name": "PMax_Cube_Middleton",
+   "status": "ENABLED",
+   "cost": 649.67,
+   "cost_prev": 1113.73,
+   "cost_delta": -464.06,
+   "conversions": 1399.1,
+   "conv_value": 2492.79,
+   "roas": 3.84,
+   "roas_prev": 3.45,
+   "roas_delta": 0.38,
+   "cpa": 0.46
+  },
+  {
+   "name": "PMax_Cube_WhitefishBay",
+   "status": "ENABLED",
+   "cost": 611.35,
+   "cost_prev": 1363.56,
+   "cost_delta": -752.21,
+   "conversions": 1526.0,
+   "conv_value": 2715.9,
+   "roas": 4.44,
+   "roas_prev": 4.11,
+   "roas_delta": 0.33,
+   "cpa": 0.4
+  },
+  {
+   "name": "PMax_Cube_Sun Prairie",
+   "status": "ENABLED",
+   "cost": 605.87,
+   "cost_prev": 1018.48,
+   "cost_delta": -412.61,
+   "conversions": 1501.7,
+   "conv_value": 2464.55,
+   "roas": 4.07,
+   "roas_prev": 4.24,
+   "roas_delta": -0.17,
+   "cpa": 0.4
+  },
+  {
+   "name": "PMax_Cube_StateStreet",
+   "status": "ENABLED",
+   "cost": 418.32,
+   "cost_prev": 626.22,
+   "cost_delta": -207.9,
+   "conversions": 798.0,
+   "conv_value": 1403.71,
+   "roas": 3.36,
+   "roas_prev": 2.64,
+   "roas_delta": 0.72,
+   "cpa": 0.52
+  },
+  {
+   "name": "PMax_Cube_Champaign",
+   "status": "ENABLED",
+   "cost": 415.26,
+   "cost_prev": 763.74,
+   "cost_delta": -348.48,
+   "conversions": 1073.0,
+   "conv_value": 1504.12,
+   "roas": 3.62,
+   "roas_prev": 3.35,
+   "roas_delta": 0.27,
+   "cpa": 0.39
+  },
+  {
+   "name": "PMax_Cube_Top Locations",
+   "status": "ENABLED",
+   "cost": 0.0,
+   "cost_prev": 0,
+   "cost_delta": 0.0,
+   "conversions": 0.0,
+   "conv_value": 0.0,
+   "roas": 0,
+   "roas_prev": null,
+   "roas_delta": null,
+   "cpa": null
+  }
+ ]
+}

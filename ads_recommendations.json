@@ -1,0 +1,22 @@
+[
+  {
+    "priority": "high",
+    "title": "PMax_Cube_Top Locations is enabled but delivering nothing",
+    "detail": "The campaign is ENABLED with zero impressions and zero spend for the full 28-day window. Check in Google Ads whether it's actually serving: budget set, asset groups approved, and no 'limited by bid strategy' warning. Also worth deciding its role — it overlaps geographically with the per-location PMax campaigns, so if it does start serving it will cannibalize their data."
+  },
+  {
+    "priority": "medium",
+    "title": "Milwaukee spend nearly doubled (+$520) at the account's lowest ROAS (2.51)",
+    "detail": "PMax_Cube_Milwaukee became the top spender ($1,135) while Brookfield (ROAS 4.76, cut -$472) and Whitefish Bay (ROAS 4.44, cut -$752) got the deepest cuts. If the Milwaukee push is deliberate (e.g. supporting MKE Public Market), fine — otherwise shifting ~$300-500/period from Milwaukee back to Brookfield/Whitefish Bay would buy conversions at nearly 2x the return."
+  },
+  {
+    "priority": "medium",
+    "title": "Total spend cut 25% — efficiency up, volume down",
+    "detail": "Spend fell $9,720 → $7,280 and conversion value fell $34,611 → $27,574, but ROAS improved 3.56 → 3.79 and CPA held steady. The cut is costing roughly $7,000 in tracked conversion value per 28 days. If the budget reduction was intentional, no action; if not, check for depleted shared budgets or pacing caps. July 4 was also a near-zero day (conv value $345), which drags the period."
+  },
+  {
+    "priority": "low",
+    "title": "State Street: weak CTR but improving returns",
+    "detail": "CTR is 1.65% (2,876 clicks on 174k impressions) vs ~3.2% account average — the campaign shows a lot but attracts few clicks. ROAS did improve 2.64 → 3.36 after its budget cut. Worth a creative/asset refresh (imagery and headlines targeting the State St/campus audience) before adding any budget back. This mirrors the SEO finding that the State Street page also underperforms organically."
+  }
+]
