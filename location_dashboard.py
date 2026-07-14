@@ -5,8 +5,16 @@ Joins three sources on location, over the same 28-day window (vs prior 28):
   - Google Search Console organic clicks/position (latest seo_history/ snapshot)
   - Google Ads spend/ROAS (latest ads_history/ snapshot)
 
-Usage: python location_dashboard.py
-Run AFTER seo_loop and ads_loop have produced same-week snapshots.
+Usage:
+  python location_dashboard.py          Build (pull sales, join snapshots, write
+                                        combined_summary.json) and render.
+  python location_dashboard.py render   Re-render from combined_summary.json +
+                                        combined_findings.json without pulling.
+
+Run AFTER seo_loop and ads_loop have produced same-week snapshots. The weekly
+task writes combined_findings.json (cross-channel narrative) between build and
+render; findings are a JSON array of {"type": "win"|"concern"|"watch",
+"title": "...", "detail": "..."}.
 """
 import glob
 import json
@@ -23,6 +31,8 @@ SEO_HISTORY = os.path.join(BASE_DIR, "seo_history")
 ADS_HISTORY = os.path.join(BASE_DIR, "ads_history")
 CACHE_DIR = os.path.join(BASE_DIR, "cache")
 DASHBOARD_FILE = os.path.join(BASE_DIR, "combined_dashboard.html")
+SUMMARY_FILE = os.path.join(BASE_DIR, "combined_summary.json")
+FINDINGS_FILE = os.path.join(BASE_DIR, "combined_findings.json")
 DATA_LAG_DAYS = 3
 PERIOD_DAYS = 28
 
@@ -147,10 +157,13 @@ def build():
             "ad_pct_sales": round(spend / sales_cur * 100, 2) if sales_cur else None,
         })
 
-    return {"built": date.today().isoformat(),
+    data = {"built": date.today().isoformat(),
             "period": {"start": start.isoformat(), "end": end.isoformat()},
             "prev_period": {"start": prev_start.isoformat(), "end": prev_end.isoformat()},
             "locations": rows}
+    with open(SUMMARY_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1)
+    return data
 
 
 def fmt_delta(d, invert=False, money=False, pct=False, decimals=0):
@@ -167,6 +180,28 @@ def fmt_delta(d, invert=False, money=False, pct=False, decimals=0):
     else:
         txt = f"{v:,.{decimals}f}" if decimals else f"{v:,g}"
     return f'<span class="{cls}">{sign}{txt}</span>'
+
+
+FINDING_STYLES = {"win": ("#22c55e", "WIN"), "concern": ("#ef4444", "CONCERN"),
+                  "watch": ("#f59e0b", "WATCH")}
+
+
+def findings_html():
+    if not os.path.exists(FINDINGS_FILE):
+        return ""
+    with open(FINDINGS_FILE, encoding="utf-8") as f:
+        findings = json.load(f)
+    if not findings:
+        return ""
+    cards = ""
+    for fi in findings:
+        color, label = FINDING_STYLES.get(fi.get("type", "watch"), FINDING_STYLES["watch"])
+        cards += (f'<div class="chart-card" style="border-left:4px solid {color};margin-bottom:12px">'
+                  f'<h3 style="color:{color};font-size:12px;text-transform:uppercase;'
+                  f'letter-spacing:1px;margin-bottom:6px">{label}</h3>'
+                  f'<div style="font-size:15px;font-weight:600;color:#f8fafc;margin-bottom:6px">{fi["title"]}</div>'
+                  f'<div style="font-size:13px;color:#cbd5e1;line-height:1.5">{fi["detail"]}</div></div>')
+    return f'<div class="section-header">This Week\'s Findings</div>{cards}'
 
 
 def render(data):
@@ -239,6 +274,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 .kpi-card .value {{ font-size:28px; font-weight:700; color:#f8fafc; }}
 .kpi-card .sub {{ font-size:13px; color:#94a3b8; margin-top:4px; }}
 .section-header {{ font-size:18px; font-weight:600; color:#f8fafc; margin:28px 0 12px; padding-bottom:8px; border-bottom:1px solid #334155; }}
+.chart-card {{ background:#1e293b; border-radius:12px; padding:20px; border:1px solid #334155; }}
 .store-table {{ width:100%; border-collapse:collapse; background:#1e293b; border-radius:12px; overflow:hidden; border:1px solid #334155; }}
 .store-table th {{ background:#334155; padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8; font-weight:600; }}
 .store-table td {{ padding:10px 12px; border-bottom:1px solid #1e293b; font-size:14px; }}
@@ -258,6 +294,8 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 </div>
 <div class="container">
   <div class="kpi-grid">{kpis}</div>
+
+  {findings_html()}
 
   <div class="section-header">By Location (28 days vs prior 28)</div>
   <table class="store-table"><thead><tr>
@@ -279,4 +317,8 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 
 
 if __name__ == "__main__":
-    render(build())
+    if len(sys.argv) > 1 and sys.argv[1] == "render":
+        with open(SUMMARY_FILE, encoding="utf-8") as f:
+            render(json.load(f))
+    else:
+        render(build())

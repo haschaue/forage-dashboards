@@ -1,0 +1,22 @@
+[
+  {
+    "type": "concern",
+    "title": "MKE Public Market: ad spend doubled, sales didn't move",
+    "detail": "The Milwaukee campaign got the biggest spend increase (+$520 to $1,135, now the top spender) at the account's lowest ROAS (2.51), and it now spends 1.42% of sales on ads vs ~0.5% for the top-performing stores — yet net sales were exactly flat (0.0%). The extra ad dollars are not showing up in the register. If the push isn't deliberate, this budget would return nearly 2x more at Brookfield (ROAS 4.76) or Whitefish Bay (4.44)."
+  },
+  {
+    "type": "concern",
+    "title": "Pewaukee is a real demand decline, not a marketing problem",
+    "detail": "Sales fell 10.3%, organic clicks on its page fell 29%, and its ad spend was already cut $301 — every channel points the same direction. Rankings and ROAS are stable, so this isn't a visibility issue; something local is suppressing demand. Worth an operator-level look (competition, road construction, staffing/hours)."
+  },
+  {
+    "type": "win",
+    "title": "State Street: +21.1% sales with almost no search support",
+    "detail": "Best sales growth in the company despite the weakest search presence — 51 organic clicks (vs 240-570 for other locations) and the lowest ad CTR. Whatever is driving the growth isn't coming through Google, which means its search channels are genuinely underdeveloped upside rather than wasted effort. The SEO and ads dashboards both flag State Street fixes this week."
+  },
+  {
+    "type": "watch",
+    "title": "Sun Prairie: sales down 12.1% while search improved",
+    "detail": "The opposite pattern from Pewaukee — organic clicks rose (+38) and its page ranks position 2.2, ROAS is healthy at 4.07, but sales fell hardest in the company. Search interest is there; conversion to visits isn't. Watch next week; if it persists, this is also an operator question, not a marketing one."
+  }
+]
