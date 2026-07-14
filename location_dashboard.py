@@ -182,6 +182,102 @@ def fmt_delta(d, invert=False, money=False, pct=False, decimals=0):
     return f'<span class="{cls}">{sign}{txt}</span>'
 
 
+def short_name(name):
+    return {"MKE Public Market": "MKE Pub Mkt", "Whitefish Bay": "Whitefish B.",
+            "State Street": "State St"}.get(name, name)
+
+
+def svg_sales_bars(rows, width=560):
+    """Horizontal paired bars: current vs prior net sales per location."""
+    rows = sorted(rows, key=lambda r: -r["sales"])
+    label_w, val_w, bar_h, pair_gap = 110, 70, 11, 10
+    row_h = bar_h * 2 + 2 + pair_gap
+    height = len(rows) * row_h + 8
+    vmax = max(max(r["sales"], r["sales_prev"]) for r in rows) * 1.05 or 1
+    bar_max = width - label_w - val_w - 10
+    parts = []
+    for i, r in enumerate(rows):
+        y = 4 + i * row_h
+        w_cur = r["sales"] / vmax * bar_max
+        w_prev = r["sales_prev"] / vmax * bar_max
+        pct = f"{r['sales_pct']:+.1f}%" if r["sales_pct"] is not None else ""
+        pct_color = "#22c55e" if (r["sales_pct"] or 0) > 0 else "#ef4444" if (r["sales_pct"] or 0) < 0 else "#94a3b8"
+        parts.append(
+            f'<text x="{label_w-6}" y="{y+bar_h+2}" fill="#e2e8f0" font-size="12" text-anchor="end">{short_name(r["name"])}</text>'
+            f'<rect x="{label_w}" y="{y}" width="{w_cur:.0f}" height="{bar_h}" rx="2" fill="#22c55e"/>'
+            f'<rect x="{label_w}" y="{y+bar_h+2}" width="{w_prev:.0f}" height="{bar_h}" rx="2" fill="#475569"/>'
+            f'<text x="{label_w+max(w_cur,w_prev)+6:.0f}" y="{y+bar_h+2}" fill="{pct_color}" font-size="11">${r["sales"]/1000:,.0f}k <tspan fill="{pct_color}">{pct}</tspan></text>')
+    legend = (f'<rect x="{label_w}" y="{height-2}" width="10" height="8" fill="#22c55e"/>'
+              f'<text x="{label_w+14}" y="{height+6}" fill="#94a3b8" font-size="11">current 28d</text>'
+              f'<rect x="{label_w+100}" y="{height-2}" width="10" height="8" fill="#475569"/>'
+              f'<text x="{label_w+114}" y="{height+6}" fill="#94a3b8" font-size="11">prior 28d</text>')
+    return (f'<svg viewBox="0 0 {width} {height+14}" style="width:100%;height:auto">'
+            + "".join(parts) + legend + "</svg>")
+
+
+def svg_metric_bars(rows, key, fmt, avg=None, avg_label="", color_fn=None, width=560):
+    """Horizontal bars for a single metric, optional dashed average line."""
+    rows = sorted([r for r in rows if r.get(key) is not None], key=lambda r: -r[key])
+    label_w, val_w, bar_h, gap = 110, 60, 15, 8
+    row_h = bar_h + gap
+    height = len(rows) * row_h + 10
+    vmax = max(r[key] for r in rows) * 1.1 or 1
+    bar_max = width - label_w - val_w - 10
+    color_fn = color_fn or (lambda v: "#60a5fa")
+    parts = []
+    for i, r in enumerate(rows):
+        y = 6 + i * row_h
+        w = r[key] / vmax * bar_max
+        parts.append(
+            f'<text x="{label_w-6}" y="{y+bar_h-3}" fill="#e2e8f0" font-size="12" text-anchor="end">{short_name(r["name"])}</text>'
+            f'<rect x="{label_w}" y="{y}" width="{w:.0f}" height="{bar_h}" rx="2" fill="{color_fn(r[key])}"/>'
+            f'<text x="{label_w+w+6:.0f}" y="{y+bar_h-3}" fill="#e2e8f0" font-size="11">{fmt(r[key])}</text>')
+    if avg is not None:
+        x = label_w + avg / vmax * bar_max
+        parts.append(
+            f'<line x1="{x:.0f}" y1="2" x2="{x:.0f}" y2="{height-4}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/>'
+            f'<text x="{x+4:.0f}" y="{height+4}" fill="#94a3b8" font-size="10">{avg_label} {fmt(avg)}</text>')
+    return (f'<svg viewBox="0 0 {width} {height+12}" style="width:100%;height:auto">'
+            + "".join(parts) + "</svg>")
+
+
+def svg_quadrant(rows, width=560, height=340):
+    """Scatter: x = change in ad spend ($), y = change in sales (%)."""
+    pts = [r for r in rows if r["sales_pct"] is not None]
+    pad_l, pad_r, pad_t, pad_b = 46, 16, 18, 30
+    xs = [r["spend"] - r["spend_prev"] for r in pts]
+    ys = [r["sales_pct"] for r in pts]
+    xmax = max(abs(v) for v in xs) * 1.25 or 1
+    ymax = max(abs(v) for v in ys) * 1.25 or 1
+    plot_w, plot_h = width - pad_l - pad_r, height - pad_t - pad_b
+
+    def X(v):
+        return pad_l + (v + xmax) / (2 * xmax) * plot_w
+
+    def Y(v):
+        return pad_t + (1 - (v + ymax) / (2 * ymax)) * plot_h
+
+    parts = [
+        f'<line x1="{X(0):.0f}" y1="{pad_t}" x2="{X(0):.0f}" y2="{height-pad_b}" stroke="#334155" stroke-width="1"/>',
+        f'<line x1="{pad_l}" y1="{Y(0):.0f}" x2="{width-pad_r}" y2="{Y(0):.0f}" stroke="#334155" stroke-width="1"/>',
+        f'<text x="{width-pad_r}" y="{Y(0)-6:.0f}" fill="#64748b" font-size="10" text-anchor="end">more ad spend &#8594;</text>',
+        f'<text x="{pad_l+4}" y="{pad_t+10}" fill="#64748b" font-size="10">sales up &#8593;</text>',
+        f'<text x="{width-pad_r}" y="{pad_t+10}" fill="#64748b" font-size="10" text-anchor="end">spend &#8593; sales &#8593;</text>',
+        f'<text x="{width-pad_r}" y="{height-pad_b-6}" fill="#64748b" font-size="10" text-anchor="end">spend &#8593; sales &#8595;</text>',
+        f'<text x="{pad_l+4}" y="{height-pad_b-6}" fill="#64748b" font-size="10">spend &#8595; sales &#8595;</text>',
+        f'<text x="{X(0):.0f}" y="{height-8}" fill="#94a3b8" font-size="10" text-anchor="middle">&Delta; ad spend ($, 28d vs prior)</text>',
+        f'<text x="12" y="{Y(0):.0f}" fill="#94a3b8" font-size="10" transform="rotate(-90 12 {Y(0):.0f})" text-anchor="middle">&Delta; sales %</text>',
+    ]
+    for r in pts:
+        x, y = X(r["spend"] - r["spend_prev"]), Y(r["sales_pct"])
+        color = "#94a3b8" if abs(r["sales_pct"]) < 0.5 else "#22c55e" if r["sales_pct"] > 0 else "#ef4444"
+        anchor = "start" if x < width - 110 else "end"
+        dx = 7 if anchor == "start" else -7
+        parts.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="5" fill="{color}" fill-opacity="0.85"/>'
+                     f'<text x="{x+dx:.0f}" y="{y+4:.0f}" fill="#cbd5e1" font-size="11" text-anchor="{anchor}">{short_name(r["name"])}</text>')
+    return f'<svg viewBox="0 0 {width} {height}" style="width:100%;height:auto">' + "".join(parts) + "</svg>"
+
+
 FINDING_STYLES = {"win": ("#22c55e", "WIN"), "concern": ("#ef4444", "CONCERN"),
                   "watch": ("#f59e0b", "WATCH")}
 
@@ -275,6 +371,9 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 .kpi-card .sub {{ font-size:13px; color:#94a3b8; margin-top:4px; }}
 .section-header {{ font-size:18px; font-weight:600; color:#f8fafc; margin:28px 0 12px; padding-bottom:8px; border-bottom:1px solid #334155; }}
 .chart-card {{ background:#1e293b; border-radius:12px; padding:20px; border:1px solid #334155; }}
+.chart-card h3 {{ font-size:13px; color:#94a3b8; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }}
+.two-col {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }}
+@media (max-width:1000px) {{ .two-col {{ grid-template-columns:1fr; }} }}
 .store-table {{ width:100%; border-collapse:collapse; background:#1e293b; border-radius:12px; overflow:hidden; border:1px solid #334155; }}
 .store-table th {{ background:#334155; padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8; font-weight:600; }}
 .store-table td {{ padding:10px 12px; border-bottom:1px solid #1e293b; font-size:14px; }}
@@ -295,7 +394,21 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
 <div class="container">
   <div class="kpi-grid">{kpis}</div>
 
+  <div class="section-header">Sales &amp; Return by Location</div>
+  <div class="two-col">
+    <div class="chart-card"><h3>Net Sales (current vs prior 28d)</h3>{svg_sales_bars(rows)}</div>
+    <div class="chart-card"><h3>ROAS by Campaign</h3>{svg_metric_bars(rows, "roas", lambda v: f"{v:.2f}",
+        avg=totals_roas, avg_label="blended", color_fn=lambda v: "#22c55e" if v >= 4 else "#f59e0b" if v >= 3 else "#ef4444")}</div>
+  </div>
+
   {findings_html()}
+
+  <div class="section-header">Where the Ad Dollars Go</div>
+  <div class="two-col">
+    <div class="chart-card"><h3>Ad Spend as % of Net Sales</h3>{svg_metric_bars(rows, "ad_pct_sales", lambda v: f"{v:.2f}%",
+        avg=(tot_spend / tot_sales * 100) if tot_sales else None, avg_label="avg")}</div>
+    <div class="chart-card"><h3>&Delta; Ad Spend vs &Delta; Sales</h3>{svg_quadrant(rows)}</div>
+  </div>
 
   <div class="section-header">By Location (28 days vs prior 28)</div>
   <table class="store-table"><thead><tr>
