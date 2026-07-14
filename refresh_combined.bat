@@ -7,7 +7,7 @@ cd /d "C:\Users\ascha\OneDrive\Desktop\forage-data"
 "C:\Users\ascha\AppData\Local\Python\bin\python.exe" location_dashboard.py
 echo.
 echo Publishing to GitHub Pages...
-git add combined_dashboard.html
+git add combined_dashboard.html combined_summary.json combined_findings.json
 git commit -m "Update combined location dashboard"
 git pull --rebase origin master
 git push
