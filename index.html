@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forage Kitchen — Dashboards</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  .hero { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 36px 30px 28px; border-bottom: 1px solid #334155; }
+  .hero h1 { font-size: 28px; font-weight: 700; color: #f8fafc; }
+  .hero h1 span { color: #22c55e; }
+  .hero p { margin-top: 6px; font-size: 14px; color: #94a3b8; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px 48px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+
+  a.card { display: block; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+  a.card:hover { border-color: #22c55e; transform: translateY(-2px); }
+  .card h2 { font-size: 17px; font-weight: 700; color: #f8fafc; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card p { margin-top: 8px; font-size: 13px; color: #94a3b8; line-height: 1.5; }
+
+  .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 999px; flex-shrink: 0; }
+  .badge.daily { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .badge.weekly { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .badge.ondemand { background: rgba(148,163,184,0.15); color: #94a3b8; }
+
+  .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin: 28px 0 12px; }
+  .section-label:first-child { margin-top: 0; }
+</style>
+<script src="nav.js"></script>
+</head>
+<body>
+<div class="hero">
+  <h1>Forage <span>Kitchen</span> — Dashboards</h1>
+  <p>One home for sales, cost, and marketing performance across all locations. Auto-refreshed pages note their schedule; times are Central.</p>
+</div>
+
+<div class="container">
+  <div class="section-label">Operations</div>
+  <div class="grid">
+    <a class="card" href="daily_dashboard.html">
+      <h2>Daily Sales <span class="badge daily">Daily · 6:30a</span></h2>
+      <p>Net sales, same-store growth, guest counts, check averages, and labor % by store — live from Toast POS, with weather context per market.</p>
+    </a>
+    <a class="card" href="cogs_dashboard.html">
+      <h2>COGS <span class="badge daily">Daily · 8:30a</span></h2>
+      <p>Purchases, stock counts, waste, and estimated COGS % vs budget from R365, with GM accountability flags (counts &amp; invoice approvals due Wed 8a). Prior-period archives linked inside.</p>
+    </a>
+    <a class="card" href="labor_dashboard.html">
+      <h2>Labor <span class="badge ondemand">On demand</span></h2>
+      <p>Daily labor report — hours, cost, and labor % by store and daypart from Toast time entries.</p>
+    </a>
+    <a class="card" href="dashboard.html">
+      <h2>Period P&amp;L <span class="badge ondemand">On demand</span></h2>
+      <p>Period profit &amp; loss view built from R365 accounting data.</p>
+    </a>
+    <a class="card" href="product_mix_analysis.html">
+      <h2>Product Mix <span class="badge ondemand">On demand</span></h2>
+      <p>Menu item and category sales mix analysis — what's selling, what's fading, period over period.</p>
+    </a>
+  </div>
+
+  <div class="section-label">Marketing</div>
+  <div class="grid">
+    <a class="card" href="seo_dashboard.html">
+      <h2>SEO <span class="badge weekly">Weekly · Mon 7a</span></h2>
+      <p>Google Search Console organic performance — clicks, impressions, position by query and location page, with weekly recommendations.</p>
+    </a>
+    <a class="card" href="ads_dashboard.html">
+      <h2>Paid Ads <span class="badge weekly">Weekly · Mon 7:30a</span></h2>
+      <p>Google Ads spend, conversion value, and ROAS by campaign (one per location), with weekly recommendations.</p>
+    </a>
+    <a class="card" href="combined_dashboard.html">
+      <h2>By Location <span class="badge weekly">Weekly · Mon 8a</span></h2>
+      <p>Cross-channel view per location — Toast sales, organic search, and paid ads side by side, with the week's findings.</p>
+    </a>
+  </div>
+</div>
+</body>
+</html>

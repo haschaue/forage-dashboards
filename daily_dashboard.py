@@ -40,6 +40,75 @@ from toast_config import (
 
 SSL_CTX = ssl.create_default_context()
 
+# Weather markets (Open-Meteo: free, no API key)
+WEATHER_MARKETS = {
+    "Madison": {"lat": 43.07, "lon": -89.40, "stores": ["8001", "8002", "8003", "8004", "8007"]},
+    "Milwaukee": {"lat": 43.04, "lon": -87.91, "stores": ["8006", "8008", "8009", "8010"]},
+    "Champaign": {"lat": 40.12, "lon": -88.24, "stores": ["8005"]},
+}
+
+WMO_CODES = {
+    0: "Clear", 1: "Mostly Clear", 2: "Partly Cloudy", 3: "Overcast",
+    45: "Fog", 48: "Rime Fog",
+    51: "Lt Drizzle", 53: "Drizzle", 55: "Hvy Drizzle", 56: "Lt Frzg Drizzle", 57: "Frzg Drizzle",
+    61: "Lt Rain", 63: "Rain", 65: "Hvy Rain",
+    66: "Frzg Drizzle", 67: "Frzg Rain",
+    71: "Lt Snow", 73: "Snow", 75: "Hvy Snow", 77: "Snow Grains",
+    80: "Lt Showers", 81: "Showers", 82: "Hvy Showers",
+    85: "Lt Snow Shwrs", 86: "Hvy Snow Shwrs",
+    95: "T-Storm", 96: "T-Storm w/ Hail", 99: "T-Storm w/ Hvy Hail",
+}
+
+WMO_EMOJI = {
+    0: "\u2600\ufe0f", 1: "\U0001f324\ufe0f", 2: "\u26c5", 3: "\u2601\ufe0f",
+    45: "\U0001f32b\ufe0f", 48: "\U0001f32b\ufe0f",
+    51: "\U0001f326\ufe0f", 53: "\U0001f327\ufe0f", 55: "\U0001f327\ufe0f", 56: "\U0001f9ca", 57: "\U0001f9ca",
+    61: "\U0001f326\ufe0f", 63: "\U0001f327\ufe0f", 65: "\U0001f327\ufe0f",
+    66: "\U0001f9ca", 67: "\U0001f9ca",
+    71: "\U0001f328\ufe0f", 73: "\u2744\ufe0f", 75: "\u2744\ufe0f", 77: "\u2744\ufe0f",
+    80: "\U0001f326\ufe0f", 81: "\U0001f327\ufe0f", 82: "\U0001f327\ufe0f",
+    85: "\U0001f328\ufe0f", 86: "\u2744\ufe0f",
+    95: "\u26c8\ufe0f", 96: "\u26c8\ufe0f", 99: "\u26c8\ufe0f",
+}
+
+
+def _pull_weather(date, api_base):
+    """Pull weather for all markets from Open-Meteo (forecast or archive)."""
+    weather = {}
+    date_str = date.strftime("%Y-%m-%d")
+    for market, info in WEATHER_MARKETS.items():
+        try:
+            url = (f"{api_base}?"
+                   f"latitude={info['lat']}&longitude={info['lon']}"
+                   f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
+                   f"&temperature_unit=fahrenheit&precipitation_unit=inch"
+                   f"&timezone=America/Chicago&start_date={date_str}&end_date={date_str}")
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, context=SSL_CTX, timeout=10) as resp:
+                data = json.loads(resp.read())
+            d = data.get("daily", {})
+            if d and d.get("time"):
+                code = d["weathercode"][0] if d.get("weathercode") else 0
+                weather[market] = {
+                    "high": round(d["temperature_2m_max"][0]) if d.get("temperature_2m_max") else None,
+                    "low": round(d["temperature_2m_min"][0]) if d.get("temperature_2m_min") else None,
+                    "precip": round(d["precipitation_sum"][0], 2) if d.get("precipitation_sum") else 0,
+                    "code": code,
+                    "desc": WMO_CODES.get(code, "Unknown"),
+                    "emoji": WMO_EMOJI.get(code, ""),
+                }
+        except Exception as e:
+            print(f"    Weather error ({market}): {e}")
+    return weather
+
+
+def pull_weather_forecast(date):
+    return _pull_weather(date, "https://api.open-meteo.com/v1/forecast")
+
+
+def pull_weather_historical(date):
+    return _pull_weather(date, "https://archive-api.open-meteo.com/v1/archive")
+
 
 # ============================================================
 # TOAST API HELPERS
@@ -387,6 +456,70 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
         total_hrs = sum(d["labor_hours"] for d in store_labor.values())
         print(f"{len(store_labor)} days, {total_hrs:,.0f} hrs, ${total_lc:,.0f} cost")
 
+    # Check if today falls within this period (for live today preview)
+    today_in_period = period_start <= today <= period_end
+
+    # Pull today's live sales (not cached, not counted in period totals)
+    today_sales = {}
+    today_py_sales = {}
+    today_py_date = None
+    if today_in_period:
+        today_str = today.strftime("%Y-%m-%d")
+        # Figure out which PY date corresponds to today (same day-of-period offset)
+        today_offset = (today - period_start).days
+        if py_start:
+            today_py_date = py_start + timedelta(days=today_offset)
+
+        print(f"  Today's live sales ({today_str})...")
+        if today_py_date:
+            print(f"  Comparing to PY: {today_py_date.strftime('%Y-%m-%d')} ({today_py_date.strftime('%A')})")
+        for store_num in store_numbers:
+            restaurant = TOAST_RESTAURANTS[store_num]
+            print(f"    {store_num} {restaurant['name']}...", end=" ", flush=True)
+            try:
+                day_totals = pull_toast_orders_day(token, restaurant["guid"], today)
+                if day_totals["checks"] > 0:
+                    today_sales[store_num] = day_totals
+                    print(f"${day_totals['net_sales']:,.0f} ({day_totals['checks']} checks)", end="")
+                else:
+                    print("no sales yet", end="")
+            except Exception as e:
+                print(f"error: {e}", end="")
+
+            # Pull the PY equivalent day for today
+            if today_py_date:
+                py_cache_key = f"{prior_cache_key}_sales_{store_num}"
+                py_cache = load_cache(py_cache_key)
+                py_date_str = today_py_date.strftime("%Y-%m-%d")
+                if py_date_str in py_cache:
+                    today_py_sales[store_num] = py_cache[py_date_str]
+                    print(f" | PY: ${py_cache[py_date_str].get('net_sales', 0):,.0f}")
+                else:
+                    try:
+                        py_day = pull_toast_orders_day(token, restaurant["guid"], today_py_date)
+                        if py_day["checks"] > 0:
+                            today_py_sales[store_num] = py_day
+                            print(f" | PY: ${py_day['net_sales']:,.0f}")
+                        else:
+                            print(f" | PY: $0")
+                    except Exception as e:
+                        print(f" | PY error: {e}")
+            else:
+                print()
+
+    # Pull weather for today and PY comparison day
+    today_weather = {}
+    py_weather = {}
+    if today_in_period and today_sales:
+        print(f"  Weather (today + PY)...")
+        today_weather = pull_weather_forecast(today)
+        for m, w in today_weather.items():
+            print(f"    {m}: {w['desc']}, {w['high']}/{w['low']}F, {w['precip']}in precip")
+        if today_py_date:
+            py_weather = pull_weather_historical(today_py_date)
+            for m, w in py_weather.items():
+                print(f"    {m} PY: {w['desc']}, {w['high']}/{w['low']}F, {w['precip']}in precip")
+
     # Pull prior year sales (with caching)
     prior_sales = {}
     if py_start:
@@ -414,8 +547,12 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
             "daily": []
         }
 
+        # Skip pre-opening training sales for new stores
+        open_date_str = SSS_CONFIG.get(store_num, {}).get("open_date")
         store_dates = sorted(current_sales.get(store_num, {}).keys())
         for date_str in store_dates:
+            if open_date_str and date_str < open_date_str:
+                continue
             day_sales = current_sales[store_num].get(date_str, {})
             day_labor = current_labor.get(store_num, {}).get(date_str, {})
             ns = day_sales.get("net_sales", 0)
@@ -485,6 +622,23 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
             totals["budget_payroll_pct"] = 0
             totals["budget_crew_wages_pct"] = 0
 
+        # Today's live sales (separate - not in period totals)
+        if store_num in today_sales:
+            ts = today_sales[store_num]
+            totals["today_net_sales"] = round(ts.get("net_sales", 0), 2)
+            totals["today_checks"] = ts.get("checks", 0)
+            totals["today_guests"] = ts.get("guests", 0)
+        else:
+            totals["today_net_sales"] = 0
+            totals["today_checks"] = 0
+            totals["today_guests"] = 0
+
+        # Today's PY comparison
+        if store_num in today_py_sales:
+            totals["today_py_net_sales"] = round(today_py_sales[store_num].get("net_sales", 0), 2)
+        else:
+            totals["today_py_net_sales"] = 0
+
         store_totals[store_num] = totals
 
     # All stores combined
@@ -497,6 +651,10 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
         "labor_cost": sum(s["labor_cost"] for s in store_totals.values()),
         "labor_hours": sum(s["labor_hours"] for s in store_totals.values()),
         "py_net_sales": sum(s["py_net_sales"] for s in store_totals.values()),
+        "today_net_sales": sum(s["today_net_sales"] for s in store_totals.values()),
+        "today_checks": sum(s["today_checks"] for s in store_totals.values()),
+        "today_guests": sum(s["today_guests"] for s in store_totals.values()),
+        "today_py_net_sales": sum(s["today_py_net_sales"] for s in store_totals.values()),
     }
     ns = all_stores["net_sales"]
     all_stores["labor_pct"] = round(all_stores["labor_cost"] / ns * 100, 1) if ns > 0 else 0
@@ -596,6 +754,10 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
         "store_order": store_numbers,
         "has_budget": budget is not None,
         "data_source": "Toast POS",
+        "today_in_period": today_in_period,
+        "today_py_date": today_py_date.strftime("%Y-%m-%d") if today_py_date else None,
+        "today_weather": today_weather,
+        "py_weather": py_weather,
     }
 
 
@@ -647,12 +809,16 @@ def main():
     periods = {}
     period_options = []
 
-    for p_num in range(1, display_period + 1):
+    # Include up to the actual current period (not just display_period)
+    # so on day 1 of a new period, both the completed and new period are in the dropdown
+    max_period = max(period, display_period)
+    for p_num in range(1, max_period + 1):
         p_info = all_periods_list[p_num - 1]
         if p_num == display_period:
             p_data = display_data
         else:
-            print(f"\n--- FY{fy} P{p_num} [cached] ---")
+            tag = '[new period]' if p_num == period and period != display_period else '[cached]'
+            print(f"\n--- FY{fy} P{p_num} {tag} ---")
             p_data = build_period_data(token, fy, p_num, p_info["start"], p_info["end"], today, yesterday, budget)
         periods[f"P{p_num}"] = p_data
         period_options.append({
@@ -700,7 +866,7 @@ def main():
     print(f"\n{'='*60}")
     print(f"  Dashboard saved to: {outpath}")
     print(f"  Default period: P{display_period} ({days_completed} completed days)")
-    print(f"  Periods included: P1 through P{display_period}")
+    print(f"  Periods included: P1 through P{max_period}")
     print(f"  YTD Net Sales: ${ytd_net_sales:,.0f}")
     print(f"  Open in your browser to view!")
     print(f"{'='*60}")
@@ -712,6 +878,7 @@ def generate_html(data_json):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="3600">
 <title>Forage Kitchen - Daily Sales Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -793,6 +960,7 @@ def generate_html(data_json):
 </style>
 </head>
 <body>
+<script src="nav.js"></script>
 
 <div class="header">
   <h1>Forage <span>Kitchen</span> &mdash; Daily Sales</h1>
@@ -925,7 +1093,35 @@ function renderDashboard(D) {{
 
   // KPI Cards
   const a = D.all_stores;
-  const kpis = [
+  const kpis = [];
+  if (D.today_in_period && a.today_net_sales > 0) {{
+    const todayPyNS = a.today_py_net_sales || 0;
+    const todayYoY = todayPyNS > 0 ? ((a.today_net_sales - todayPyNS) / todayPyNS * 100) : null;
+    const pyDateStr = D.today_py_date ? (' \u00b7 PY: ' + fmt(todayPyNS) + ' (' + D.today_py_date + ')') : '';
+
+    // Build weather summary
+    let weatherHtml = '';
+    const tw = D.today_weather || {{}};
+    const pw = D.py_weather || {{}};
+    const markets = Object.keys(tw);
+    if (markets.length > 0) {{
+      const parts = markets.map(m => {{
+        const w = tw[m];
+        const p = pw[m];
+        let line = w.emoji + ' ' + m + ': ' + w.desc + ' ' + w.high + '\u00b0/' + w.low + '\u00b0F';
+        if (w.precip > 0) line += ' (' + w.precip + '" precip)';
+        if (p) {{
+          line += ' \u2014 PY: ' + p.emoji + ' ' + p.desc + ' ' + p.high + '\u00b0/' + p.low + '\u00b0F';
+          if (p.precip > 0) line += ' (' + p.precip + '")';
+        }}
+        return line;
+      }});
+      weatherHtml = parts.join(' | ');
+    }}
+
+    kpis.push({{ label: "Today's Sales (Live)", value: fmt(a.today_net_sales), sub: a.today_checks + ' checks \u00b7 ' + a.today_guests + ' guests' + pyDateStr, change: todayYoY, changeLabel: 'vs PY day', highlight: 1, today: true, weatherHtml: weatherHtml }});
+  }}
+  kpis.push(
     {{ label: 'Period Net Sales', value: fmt(a.net_sales), sub: 'Budget: ' + fmt(a.budget_sales_prorated) + ' (prorated)', change: a.budget_variance, changeLabel: 'vs Budget' }},
     {{ label: 'YTD Net Sales', value: fmt(ALLDATA.ytd_net_sales), sub: 'FY' + D.fiscal_year + ' P1\u2013P' + D.period + ' all stores', change: ALLDATA.ytd_growth, changeLabel: 'YoY' }},
     {{ label: 'SSS Growth', value: a.sss_growth != null ? (a.sss_growth >= 0 ? '+' : '') + a.sss_growth + '%' : 'N/A', sub: 'Same store sales YoY (' + D.days_completed + ' days)', change: null, highlight: a.sss_growth }},
@@ -933,7 +1129,7 @@ function renderDashboard(D) {{
     {{ label: 'Avg Check', value: fmt(a.avg_check), sub: a.checks.toLocaleString() + ' checks', change: null }},
     {{ label: 'Guest Count', value: a.guests.toLocaleString(), sub: 'Period to date', change: null }},
     {{ label: 'Full Period Budget', value: fmt(a.budget_sales), sub: 'Pace: ' + (a.budget_sales > 0 ? (a.net_sales / a.budget_sales_prorated * 100).toFixed(0) + '% of prorated' : 'N/A'), change: null, highlight: a.budget_variance }},
-  ];
+  );
 
   const kpiRow = document.getElementById('kpiRow');
   kpiRow.innerHTML = '';
@@ -950,7 +1146,13 @@ function renderDashboard(D) {{
     if (k.highlight != null) {{
       valueColor = k.highlight >= 0 ? 'color:#22c55e' : 'color:#ef4444';
     }}
-    card.innerHTML = `<div class="label">${{k.label}}</div><div class="value" style="${{valueColor}}">${{k.value}}</div><div class="sub">${{k.sub}}</div>${{changeHtml}}`;
+    if (k.today) {{
+      card.style.border = '1px solid #f59e0b';
+      card.style.background = 'linear-gradient(135deg, #1e293b 0%, #292524 100%)';
+      card.style.gridColumn = 'span 2';
+    }}
+    const weatherLine = k.weatherHtml ? `<div class="sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #334155;font-size:12px;line-height:1.5">${{k.weatherHtml}}</div>` : '';
+    card.innerHTML = `<div class="label">${{k.label}}</div><div class="value" style="${{valueColor}}">${{k.value}}</div><div class="sub">${{k.sub}}</div>${{changeHtml}}${{weatherLine}}`;
     kpiRow.appendChild(card);
   }});
 
@@ -1009,8 +1211,10 @@ function renderDashboard(D) {{
 
   // Store Scoreboard Table
   const storeTable = document.getElementById('storeTable');
+  const showToday = D.today_in_period && a.today_net_sales > 0;
   let tableHtml = `<thead><tr>
     <th>Store</th>
+    ${{showToday ? '<th class="right" style="color:#f59e0b">Today</th><th class="right" style="color:#64748b">Today PY</th>' : ''}}
     <th class="right">Net Sales</th>
     <th class="right">Budget (pro)</th>
     <th class="right">vs Budget</th>
@@ -1030,6 +1234,7 @@ function renderDashboard(D) {{
     const laborCls = s.labor_pct > 35 ? 'negative' : s.labor_pct > 30 ? 'neutral' : 'positive';
     tableHtml += `<tr>
       <td><strong>${{num}}</strong> ${{s.name}}</td>
+      ${{showToday ? '<td class="right" style="color:#f59e0b">' + (s.today_net_sales > 0 ? fmt(s.today_net_sales) : '<span class="neutral">&mdash;</span>') + '</td><td class="right" style="color:#64748b">' + (s.today_py_net_sales > 0 ? fmt(s.today_py_net_sales) : '<span class="neutral">&mdash;</span>') + '</td>' : ''}}
       <td class="right">${{fmt(s.net_sales)}}</td>
       <td class="right" style="color:#94a3b8">${{fmt(s.budget_sales_prorated)}}</td>
       <td class="right">${{budgetVarHtml}}</td>
@@ -1046,6 +1251,7 @@ function renderDashboard(D) {{
   const aBudgetVarHtml = a.budget_variance != null ? fmtChange(a.budget_variance) : '<span class="neutral">\u2014</span>';
   tableHtml += `<tr class="total-row">
     <td><strong>ALL STORES</strong></td>
+    ${{showToday ? '<td class="right" style="color:#f59e0b">' + fmt(a.today_net_sales) + '</td><td class="right" style="color:#64748b">' + fmt(a.today_py_net_sales) + '</td>' : ''}}
     <td class="right">${{fmt(a.net_sales)}}</td>
     <td class="right" style="color:#94a3b8">${{fmt(a.budget_sales_prorated)}}</td>
     <td class="right">${{aBudgetVarHtml}}</td>

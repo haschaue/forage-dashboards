@@ -770,6 +770,7 @@ def generate_html(data_json):
 </style>
 </head>
 <body>
+<script src="nav.js"></script>
 
 <div class="header">
   <h1>Forage <span>Kitchen</span> &mdash; Product Mix Analysis</h1>

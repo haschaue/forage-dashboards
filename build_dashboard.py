@@ -69,6 +69,7 @@ html = '''<!DOCTYPE html>
 </style>
 </head>
 <body>
+<script src="nav.js"></script>
 <div class="header">
   <h1>Forage Kitchen LLC &mdash; Period P&amp;L Dashboard</h1>
   <p>FY2026 YTD vs FY2025 &bull; 2-Yr Stacked Same Store Sales (Core Six) &bull; Net Sales &bull; Labor % &bull; COGS % &bull; Occupancy % &bull; EBITDA %</p>
