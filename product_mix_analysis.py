@@ -1,9 +1,10 @@
 """
-Forage Kitchen - Product Mix Analysis: P1 vs P2 FY2026
+Forage Kitchen - Product Mix Analysis
 Compares item-level sales from Toast and vendor pricing from R365
-to explain COGS savings between periods.
+to explain COGS changes between two fiscal periods.
 
-Usage: python product_mix_analysis.py
+Usage: python product_mix_analysis.py            (two most recently completed periods)
+       python product_mix_analysis.py P5 P6      (specific periods, current FY)
        python product_mix_analysis.py --debug    (prints sample Toast selections)
        Then open product_mix_analysis.html in your browser.
 
@@ -175,6 +176,17 @@ def get_period_dates(fy, period):
     periods = get_445_periods(FISCAL_YEAR_STARTS[fy])
     p = periods[period - 1]
     return p["start"], p["end"]
+
+
+def get_completed_periods():
+    """All (fy, period) tuples whose end date is before today, chronological."""
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    completed = []
+    for fy_year in sorted(FISCAL_YEAR_STARTS.keys()):
+        for p in get_445_periods(FISCAL_YEAR_STARTS[fy_year]):
+            if p["end"] < today:
+                completed.append((fy_year, p["period"]))
+    return completed
 
 
 # ============================================================
@@ -792,7 +804,7 @@ def generate_html(data_json):
   <div class="section-header">Category Breakdown</div>
   <div class="charts-row">
     <div class="chart-card">
-      <h3>Revenue by Category: P1 vs P2</h3>
+      <h3>Revenue by Category</h3>
       <canvas id="categoryChart" height="250"></canvas>
     </div>
     <div class="chart-card">
@@ -1090,17 +1102,27 @@ pkCards.forEach(k => {{
 # MAIN
 # ============================================================
 def main():
+    # Periods to compare: CLI args like "P5 P6" (assumed current fiscal year),
+    # else the two most recently completed fiscal periods.
+    period_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if len(period_args) == 2:
+        fy1 = fy2 = max(FISCAL_YEAR_STARTS.keys())
+        p1_num = int(period_args[0].upper().lstrip("P"))
+        p2_num = int(period_args[1].upper().lstrip("P"))
+    else:
+        completed = get_completed_periods()
+        if len(completed) < 2:
+            raise SystemExit("Need at least two completed fiscal periods to compare.")
+        (fy1, p1_num), (fy2, p2_num) = completed[-2:]
+    fy = fy2
+
     print("=" * 60)
     print("  Forage Kitchen - Product Mix Analysis")
-    print("  P1 vs P2 FY2026")
+    print(f"  P{p1_num} FY{fy1} vs P{p2_num} FY{fy2}")
     print("=" * 60)
 
-    fy = 2026
-    p1_num = 1
-    p2_num = 2
-
-    p1_start, p1_end = get_period_dates(fy, p1_num)
-    p2_start, p2_end = get_period_dates(fy, p2_num)
+    p1_start, p1_end = get_period_dates(fy1, p1_num)
+    p2_start, p2_end = get_period_dates(fy2, p2_num)
 
     print(f"\n  P{p1_num}: {p1_start.strftime('%Y-%m-%d')} to {p1_end.strftime('%Y-%m-%d')}")
     print(f"  P{p2_num}: {p2_start.strftime('%Y-%m-%d')} to {p2_end.strftime('%Y-%m-%d')}")
@@ -1127,7 +1149,7 @@ def main():
     p1_all_stores = {}
     for store_num in sorted(TOAST_RESTAURANTS.keys()):
         guid = TOAST_RESTAURANTS[store_num]["guid"]
-        cache_key = f"FY{fy}_P{p1_num}"
+        cache_key = f"FY{fy1}_P{p1_num}"
         p1_all_stores[store_num] = pull_product_mix_period(
             token, store_num, guid, p1_start, p1_end, cache_key,
             menu_group_map, sales_cat_map)
@@ -1137,7 +1159,7 @@ def main():
     p2_all_stores = {}
     for store_num in sorted(TOAST_RESTAURANTS.keys()):
         guid = TOAST_RESTAURANTS[store_num]["guid"]
-        cache_key = f"FY{fy}_P{p2_num}"
+        cache_key = f"FY{fy2}_P{p2_num}"
         p2_all_stores[store_num] = pull_product_mix_period(
             token, store_num, guid, p2_start, p2_end, cache_key,
             menu_group_map, sales_cat_map)
