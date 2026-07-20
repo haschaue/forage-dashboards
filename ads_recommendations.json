@@ -1,27 +1,32 @@
 [
   {
     "priority": "high",
-    "title": "PMax_Cube_Top Locations is enabled but delivering nothing",
-    "detail": "The campaign is ENABLED with zero impressions and zero spend for the full 28-day window. Check in Google Ads whether it's actually serving: budget set, asset groups approved, and no 'limited by bid strategy' warning. Also worth deciding its role — it overlaps geographically with the per-location PMax campaigns, so if it does start serving it will cannibalize their data."
+    "title": "Milwaukee still absorbing budget at the account's lowest ROAS (2.57) — second week running",
+    "detail": "PMax_Cube_Milwaukee is again the top spender at $1,143 (+$336 vs prior period) while returning ROAS 2.57 — the lowest of any real per-location campaign. Meanwhile the two best performers got cut: Whitefish Bay (ROAS 4.44) down $605 to $581, and Brookfield (ROAS 4.39) down $313 to $976. This is the same misallocation flagged last week and it widened. Unless the Milwaukee push is a deliberate MKE Public Market support play, moving ~$300-500/period from Milwaukee back into Brookfield/Whitefish Bay would buy conversions at roughly 1.7x the return. Recommend capping Milwaukee's budget and lifting the two high-ROAS campaigns."
+  },
+  {
+    "priority": "high",
+    "title": "PMax_Cube_Top Locations is now serving but at ROAS 1.20 — worst in the account",
+    "detail": "Last week this campaign was ENABLED with zero delivery; it has since started serving ($146 spend, ROAS 1.20 vs account 3.57). That resolves the 'is it broken' question but confirms the cannibalization concern — it overlaps geographically with the per-location PMax campaigns and is converting at a third of their efficiency. Recommend pausing it (or narrowing its geo/asset targeting) so its budget flows back to the location campaigns rather than competing with them for the same impressions."
   },
   {
     "priority": "medium",
-    "title": "Milwaukee spend nearly doubled (+$520) at the account's lowest ROAS (2.51)",
-    "detail": "PMax_Cube_Milwaukee became the top spender ($1,135) while Brookfield (ROAS 4.76, cut -$472) and Whitefish Bay (ROAS 4.44, cut -$752) got the deepest cuts. If the Milwaukee push is deliberate (e.g. supporting MKE Public Market), fine — otherwise shifting ~$300-500/period from Milwaukee back to Brookfield/Whitefish Bay would buy conversions at nearly 2x the return."
+    "title": "Sun Prairie ROAS fell 4.50 -> 3.74 (-0.75), the only campaign past the 0.5 drop threshold",
+    "detail": "Even though spend was cut $365 to $581, PMax_Cube_Sun Prairie's return dropped three-quarters of a point — the sharpest ROAS decline in the account this period (it was a top-3 performer last period). No other campaign dropped more than 0.13. Worth a look in Google Ads for an asset-group or audience-signal change, or a seasonal softening in that market. Hold budget flat here until the return stabilizes rather than adding to it."
   },
   {
     "priority": "medium",
-    "title": "Total spend cut 25% — efficiency up, volume down",
-    "detail": "Spend fell $9,720 → $7,280 and conversion value fell $34,611 → $27,574, but ROAS improved 3.56 → 3.79 and CPA held steady. The cut is costing roughly $7,000 in tracked conversion value per 28 days. If the budget reduction was intentional, no action; if not, check for depleted shared budgets or pacing caps. July 4 was also a near-zero day (conv value $345), which drags the period."
+    "title": "Account spend and conversion value both down ~25% for a second straight period",
+    "detail": "Spend fell $9,569 -> $7,343 (-23%) and conversion value $35,177 -> $26,211 (-25%), while ROAS held roughly flat (3.68 -> 3.57) and CPA steady at $0.47. Efficiency is fine but volume keeps contracting two periods in a row — that is ~$9k/period in tracked conversion value now foregone. If this is intentional budget tightening, no action; if not, check for depleted shared budgets or pacing caps. The July 4 near-zero day (conv value $348) also drags the current window."
   },
   {
     "priority": "medium",
-    "title": "Meta ads have no conversion tracking — $690/period flying blind",
-    "detail": "All five Meta campaigns are traffic-objective with no purchase events, so unlike Google (ROAS 3.79) there's no way to see what the ~$690/period buys beyond landing page views ($0.41 each, which is efficient as traffic goes). Adding the Meta Pixel purchase/online-order events to the site (or Toast order confirmation page) would let Meta report conversion value and make the two channels comparable. Note the spend also sits on a legacy personal-named ad account ('Darlene Murphy') — worth migrating to the business account at some point."
+    "title": "Meta: Catering video is the weakest campaign at $0.66/LPV vs $0.40 account average",
+    "detail": "On flat total Meta spend ($671, +$89) and flat blended cost/LPV ($0.40 vs $0.39), the Catering Traffic 0326 video is a clear laggard — $160 spend for 244 landing-page views = $0.66/LPV, ~65% above average and the most expensive of the five. By contrast the new falafel launch 0706 ($0.35/LPV) and Branding traffic 0626 ($0.30/LPV) are the most efficient. Recommend shifting a portion of Catering's budget into those two, or refreshing the Catering creative before continuing to fund it at this rate."
   },
   {
     "priority": "low",
-    "title": "State Street: weak CTR but improving returns",
-    "detail": "CTR is 1.65% (2,876 clicks on 174k impressions) vs ~3.2% account average — the campaign shows a lot but attracts few clicks. ROAS did improve 2.64 → 3.36 after its budget cut. Worth a creative/asset refresh (imagery and headlines targeting the State St/campus audience) before adding any budget back. This mirrors the SEO finding that the State Street page also underperforms organically."
+    "title": "Meta still has no purchase tracking — $671/period measured only on landing-page views",
+    "detail": "All five Meta campaigns remain traffic-objective with no purchase/online-order events, so unlike Google (ROAS 3.57) the channel can only be judged on LPVs. This has carried unresolved for several weeks. Adding the Meta Pixel purchase/order-confirmation event (Toast confirmation page) would let Meta report conversion value and make the two channels directly comparable. The spend also still sits on a legacy personal-named ad account (act_35967094) worth migrating to the business account when convenient."
   }
 ]
