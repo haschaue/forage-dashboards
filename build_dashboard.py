@@ -76,18 +76,18 @@ html = '''<!DOCTYPE html>
 </div>
 <div class="controls">
   <div class="ctrl-group"><label>Period Filter (Stack KPIs)</label>
-    <select id="periodSelect"><option value="0">YTD (P1-P5)</option>
-    <option value="5">P5</option><option value="4">P4</option>
+    <select id="periodSelect"><option value="0">YTD (P1-P6)</option>
+    <option value="6">P6</option><option value="5">P5</option><option value="4">P4</option>
     <option value="3">P3</option><option value="2">P2</option><option value="1">P1</option></select>
   </div>
 </div>
 <div class="main">
-  <div class="section-title">FY2026 YTD (P1-P5) vs FY2025 YTD (P1-P5) &mdash; All Stores</div>
+  <div class="section-title">FY2026 YTD (P1-P6) vs FY2025 YTD (P1-P6) &mdash; All Stores</div>
   <p class="note">Periods 1-5, 2026 compared to Periods 1-5, 2025</p>
   <div id="ytd26KpiRow" class="kpi-row six"></div>
   <div class="table-card"><table id="ytd26Table"></table></div>
   <div class="charts-grid" style="margin-top:32px">
-    <div class="chart-card full"><h3>Net Sales by Period &mdash; All Stores &bull; 2026 P1-P5</h3><canvas id="sssChart" height="70"></canvas></div>
+    <div class="chart-card full"><h3>Net Sales by Period &mdash; All Stores &bull; 2026 P1-P6</h3><canvas id="sssChart" height="70"></canvas></div>
     <div class="chart-card"><h3>Labor % by Period (Same Store)</h3><canvas id="laborChart" height="110"></canvas></div>
     <div class="chart-card"><h3>COGS % by Period (Same Store)</h3><canvas id="cogsChart" height="110"></canvas></div>
     <div class="chart-card"><h3>Occupancy % by Period (Same Store)</h3><canvas id="occChart" height="110"></canvas></div>
@@ -100,7 +100,7 @@ html = '''<!DOCTYPE html>
   <p class="note">Core-six totals each period &bull; 2-Yr Stack % = (2026 / 2024) - 1 &bull; only computed where 2026 data exists</p>
   <div class="table-card"><table id="sssTable"></table></div>
   <div class="section-title">2-Yr Stack by Restaurant</div>
-  <p class="note">YTD P1-P5: 2024 / 2025 / 2026 comparable periods only</p>
+  <p class="note">YTD P1-P6: 2024 / 2025 / 2026 comparable periods only</p>
   <div class="table-card"><table id="sssByStoreTable"></table></div>
   <div class="section-title">Store Detail &mdash; Trailing 12 Periods</div>
   <p class="note">Columns ordered oldest (left) to most recent (right) &bull; 2025 periods labeled '25 &bull; 2026 periods labeled '26 (green) &bull; PY = same 12 periods one year earlier</p>
@@ -144,7 +144,7 @@ function stackP(metric,p){
   return {v24:v24,v25:v25,v26:v26};
 }
 
-const FY26_PERIODS = [1,2,3,4,5];
+const FY26_PERIODS = [1,2,3,4,5,6];
 function consol26(metric,p){
   if(!FY26_PERIODS.includes(p)) return null;
   var t=0;
