@@ -1,32 +1,32 @@
 [
   {
     "priority": "high",
-    "title": "Milwaukee still absorbing budget at the account's lowest ROAS (2.57) — second week running",
-    "detail": "PMax_Cube_Milwaukee is again the top spender at $1,143 (+$336 vs prior period) while returning ROAS 2.57 — the lowest of any real per-location campaign. Meanwhile the two best performers got cut: Whitefish Bay (ROAS 4.44) down $605 to $581, and Brookfield (ROAS 4.39) down $313 to $976. This is the same misallocation flagged last week and it widened. Unless the Milwaukee push is a deliberate MKE Public Market support play, moving ~$300-500/period from Milwaukee back into Brookfield/Whitefish Bay would buy conversions at roughly 1.7x the return. Recommend capping Milwaukee's budget and lifting the two high-ROAS campaigns."
+    "title": "Account True ROAS is ~1.0 — paid search roughly breaks even on tracked online orders",
+    "detail": "Across all stores, $7,296 of spend generated $7,283 in actual GA4 online-order revenue (True ROAS 1.00, down from 1.13 last period). On a food-margin basis, online orders alone do not cover the ad spend. The important caveat: in-store visits driven by these local campaigns (directions taps, calls, menu views) are NOT captured as revenue here, and for a dine-in/takeout business that in-store lift is likely the bigger return — so 1.0 is the measurable floor, not the full picture. Recommended next step to actually answer 'is this worth it': run a deliberate spend-reduction test in 2-3 markets for 4 weeks and watch whether same-store sales (Toast) drop — that isolates the incremental in-store value the online number can't see."
   },
   {
     "priority": "high",
-    "title": "PMax_Cube_Top Locations is now serving but at ROAS 1.20 — worst in the account",
-    "detail": "Last week this campaign was ENABLED with zero delivery; it has since started serving ($146 spend, ROAS 1.20 vs account 3.57). That resolves the 'is it broken' question but confirms the cannibalization concern — it overlaps geographically with the per-location PMax campaigns and is converting at a third of their efficiency. Recommend pausing it (or narrowing its geo/asset targeting) so its budget flows back to the location campaigns rather than competing with them for the same impressions."
+    "title": "Budget is concentrated on the LOWEST true-ROAS stores — Milwaukee & Champaign vs Whitefish Bay",
+    "detail": "Milwaukee is the top spender at $1,118 (+$233) yet has the second-worst True ROAS at 0.76 ($853 in orders). Champaign spends $414 at True ROAS 0.47 (worst; $194 in orders). Meanwhile Whitefish Bay — the BEST True ROAS at 1.58 — was cut $551 to just $567, even though it generated MORE online-order revenue ($895) than Milwaukee did on half the spend. Monona (1.32) is also strong and under-funded at $669. Shifting ~$300-500/period out of Milwaukee and Champaign into Whitefish Bay and Monona would raise measurable order revenue at equal spend. This misallocation shows up in blended ROAS too but is far starker on True ROAS."
+  },
+  {
+    "priority": "high",
+    "title": "Sun Prairie True ROAS collapsed 1.67 -> 0.86; online orders fell from 52 to 17",
+    "detail": "Sun Prairie was the account's best online-order performer last period (True ROAS 1.67) and dropped to 0.86 — a -0.81 swing, by far the largest, on spend that was actually cut ($933 -> $562). Order revenue fell $1,557 -> $485. Blended ROAS barely moved (4.26 -> 3.97), which is exactly why this needs the True ROAS view to catch. Check Google Ads for an asset-group/audience-signal change around 06-22, and confirm the Sun Prairie online-ordering flow (Toast/GA4 purchase tag) is still firing — a tracking break would produce this exact pattern."
   },
   {
     "priority": "medium",
-    "title": "Sun Prairie ROAS fell 4.50 -> 3.74 (-0.75), the only campaign past the 0.5 drop threshold",
-    "detail": "Even though spend was cut $365 to $581, PMax_Cube_Sun Prairie's return dropped three-quarters of a point — the sharpest ROAS decline in the account this period (it was a top-3 performer last period). No other campaign dropped more than 0.13. Worth a look in Google Ads for an asset-group or audience-signal change, or a seasonal softening in that market. Hold budget flat here until the return stabilizes rather than adding to it."
+    "title": "Champaign has run below 0.50 True ROAS for two periods — chronically unprofitable on orders",
+    "detail": "Champaign's True ROAS is 0.47 (prev 0.45): $414 spend for $194 of online-order revenue (10 orders). Unlike stores that break even, this one is consistently the worst and is not improving. Two likely causes worth ruling out: (1) online ordering isn't well set up / promoted for the Champaign location, or (2) it's an out-of-market college store where the local-visit value doesn't convert online. Recommend either cutting its budget by half and reallocating, or confirming the ordering funnel works before continuing to fund it."
   },
   {
     "priority": "medium",
-    "title": "Account spend and conversion value both down ~25% for a second straight period",
-    "detail": "Spend fell $9,569 -> $7,343 (-23%) and conversion value $35,177 -> $26,211 (-25%), while ROAS held roughly flat (3.68 -> 3.57) and CPA steady at $0.47. Efficiency is fine but volume keeps contracting two periods in a row — that is ~$9k/period in tracked conversion value now foregone. If this is intentional budget tightening, no action; if not, check for depleted shared budgets or pacing caps. The July 4 near-zero day (conv value $348) also drags the current window."
-  },
-  {
-    "priority": "medium",
-    "title": "Meta: Catering video is the weakest campaign at $0.66/LPV vs $0.40 account average",
-    "detail": "On flat total Meta spend ($671, +$89) and flat blended cost/LPV ($0.40 vs $0.39), the Catering Traffic 0326 video is a clear laggard — $160 spend for 244 landing-page views = $0.66/LPV, ~65% above average and the most expensive of the five. By contrast the new falafel launch 0706 ($0.35/LPV) and Branding traffic 0626 ($0.30/LPV) are the most efficient. Recommend shifting a portion of Catering's budget into those two, or refreshing the Catering creative before continuing to fund it at this rate."
+    "title": "Top Locations campaign: True ROAS 0.28, worst in the account — pause it",
+    "detail": "PMax_Cube_Top Locations ramped to $214 spend this period (from ~$0) and returned just $59 in online orders (True ROAS 0.28, 3 orders). It overlaps geographically with the per-store PMax campaigns, so it is both the least efficient campaign and actively cannibalizing the location campaigns' impressions and data. Recommend pausing it and letting that budget flow back to the store-level campaigns — this was flagged last week when it was still spinning up, and the data now confirms it."
   },
   {
     "priority": "low",
-    "title": "Meta still has no purchase tracking — $671/period measured only on landing-page views",
-    "detail": "All five Meta campaigns remain traffic-objective with no purchase/online-order events, so unlike Google (ROAS 3.57) the channel can only be judged on LPVs. This has carried unresolved for several weeks. Adding the Meta Pixel purchase/order-confirmation event (Toast confirmation page) would let Meta report conversion value and make the two channels directly comparable. The spend also still sits on a legacy personal-named ad account (act_35967094) worth migrating to the business account when convenient."
+    "title": "Meta ($671/period) has no purchase tracking — a growing blind spot now that Google's True ROAS is visible",
+    "detail": "With Google's real-revenue ROAS now on the dashboard, Meta is the remaining unmeasured channel: all five campaigns are traffic-objective with no purchase event, so the $671/period can only be judged on landing-page views ($0.38/LPV, efficient as traffic). Adding the Meta Pixel purchase/order-confirmation event (Toast confirmation page) would let Meta report order revenue and True ROAS the same way Google now does. The spend also still sits on a legacy personal-named ad account (act_35967094) worth migrating to the business account."
   }
 ]

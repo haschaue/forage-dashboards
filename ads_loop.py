@@ -6,12 +6,17 @@ JSON results rather than fetching itself.
 
 Usage:
   python ads_loop.py dates                Print the date ranges to query.
-  python ads_loop.py ingest CUR PREV DAILY
+  python ads_loop.py ingest CUR PREV DAILY [REAL_CUR REAL_PREV]
                                           Parse raw GAQL JSON files (campaigns
                                           current period, campaigns previous
                                           period, daily customer metrics for
                                           both periods) into a snapshot in
                                           ads_history/ + ads_summary.json.
+                                          REAL_CUR/REAL_PREV (optional) are
+                                          campaign x conversion-action results
+                                          for each period, used to compute
+                                          per-store True ROAS from actual
+                                          online-order revenue only.
   python ads_loop.py render               Render ads_dashboard.html from the
                                           latest snapshot + ads_recommendations.json.
 
@@ -31,6 +36,14 @@ RECS_FILE = os.path.join(BASE_DIR, "ads_recommendations.json")
 DASHBOARD_FILE = os.path.join(BASE_DIR, "ads_dashboard.html")
 DATA_LAG_DAYS = 3
 PERIOD_DAYS = 28
+
+# Conversion actions that carry ACTUAL online-order revenue (real dollars from
+# GA4, ~$27 avg ticket). Everything else Google counts toward "conversion value"
+# is a proxy action valued at a flat $1 (directions, menu views, CTA clicks,
+# generic Purchase micro-event) or $0.20 (modeled store visits). "True ROAS" is
+# built only from the actions below; the default blended ROAS runs ~3-4x higher.
+# Add more names here if real-revenue tracking is later added (e.g. store sales).
+REAL_REVENUE_ACTIONS = {"Forage Kitchen GA4 (web) purchase"}
 
 
 def date_ranges():
@@ -75,15 +88,39 @@ def parse_daily(raw, start, end):
     return sorted(out, key=lambda r: r["date"])
 
 
+def parse_real_revenue(raw):
+    """Segmented (campaign x conversion_action) GAQL results -> per-campaign real
+    online-order revenue: {campaign_name: {real_conversions, real_conv_value}},
+    summing only the conversion actions in REAL_REVENUE_ACTIONS."""
+    out = {}
+    for r in raw.get("results", []):
+        action = r.get("segments", {}).get("conversionActionName")
+        if action not in REAL_REVENUE_ACTIONS:
+            continue
+        name = r["campaign"]["name"]
+        m = r["metrics"]
+        agg = out.setdefault(name, {"real_conversions": 0.0, "real_conv_value": 0.0})
+        agg["real_conversions"] += float(m.get("conversions", 0) or 0)
+        agg["real_conv_value"] += float(m.get("conversionsValue", 0) or 0)
+    return {k: {"real_conversions": round(v["real_conversions"], 1),
+                "real_conv_value": round(v["real_conv_value"], 2)}
+            for k, v in out.items()}
+
+
 def totals(campaigns):
     cost = sum(c["cost"] for c in campaigns)
     clicks = sum(c["clicks"] for c in campaigns)
     impr = sum(c["impressions"] for c in campaigns)
     conv = sum(c["conversions"] for c in campaigns)
     value = sum(c["conv_value"] for c in campaigns)
+    real_value = sum(c.get("real_conv_value", 0) for c in campaigns)
+    real_conv = sum(c.get("real_conversions", 0) for c in campaigns)
     return {"cost": round(cost, 2), "clicks": clicks, "impressions": impr,
             "conversions": round(conv, 1), "conv_value": round(value, 2),
             "roas": round(value / cost, 2) if cost else 0,
+            "real_conv_value": round(real_value, 2),
+            "real_conversions": round(real_conv, 1),
+            "true_roas": round(real_value / cost, 2) if cost else 0,
             "cpa": round(cost / conv, 2) if conv else 0,
             "cpc": round(cost / clicks, 2) if clicks else 0}
 
@@ -148,7 +185,7 @@ def fetch_meta(start, end, prev_start, prev_end):
         return None
 
 
-def ingest(cur_file, prev_file, daily_file):
+def ingest(cur_file, prev_file, daily_file, real_cur_file=None, real_prev_file=None):
     start, end, prev_start, prev_end = date_ranges()
     with open(cur_file, encoding="utf-8") as f:
         cur_campaigns = parse_campaigns(json.load(f))
@@ -157,8 +194,25 @@ def ingest(cur_file, prev_file, daily_file):
     with open(daily_file, encoding="utf-8") as f:
         daily_raw = json.load(f)
 
+    # Real online-order revenue per campaign (optional 4th/5th args). Attach onto
+    # each campaign dict so totals() and the comparison can compute True ROAS.
+    real_cur, real_prev = {}, {}
+    if real_cur_file:
+        with open(real_cur_file, encoding="utf-8") as f:
+            real_cur = parse_real_revenue(json.load(f))
+    if real_prev_file:
+        with open(real_prev_file, encoding="utf-8") as f:
+            real_prev = parse_real_revenue(json.load(f))
+    has_real = bool(real_cur or real_prev)
+    for camps, real in ((cur_campaigns, real_cur), (prev_campaigns, real_prev)):
+        for c in camps:
+            rr = real.get(c["name"], {})
+            c["real_conversions"] = rr.get("real_conversions", 0.0)
+            c["real_conv_value"] = rr.get("real_conv_value", 0.0)
+
     snapshot = {
         "fetched": date.today().isoformat(),
+        "has_real_revenue": has_real,
         "current": {"start": start, "end": end, "campaigns": cur_campaigns,
                     "totals": totals(cur_campaigns),
                     "by_date": parse_daily(daily_raw, start, end)},
@@ -178,6 +232,8 @@ def ingest(cur_file, prev_file, daily_file):
         p = prev_by_name.get(c["name"])
         roas = c["conv_value"] / c["cost"] if c["cost"] else 0
         roas_prev = (p["conv_value"] / p["cost"]) if p and p["cost"] else None
+        true_roas = c["real_conv_value"] / c["cost"] if c["cost"] else 0
+        true_roas_prev = (p["real_conv_value"] / p["cost"]) if p and p["cost"] else None
         comparison.append({
             "name": c["name"], "status": c["status"],
             "cost": c["cost"], "cost_prev": p["cost"] if p else 0,
@@ -186,10 +242,15 @@ def ingest(cur_file, prev_file, daily_file):
             "roas": round(roas, 2),
             "roas_prev": round(roas_prev, 2) if roas_prev is not None else None,
             "roas_delta": round(roas - roas_prev, 2) if roas_prev is not None else None,
+            "real_conversions": c["real_conversions"], "real_conv_value": c["real_conv_value"],
+            "true_roas": round(true_roas, 2),
+            "true_roas_prev": round(true_roas_prev, 2) if true_roas_prev is not None else None,
+            "true_roas_delta": round(true_roas - true_roas_prev, 2) if true_roas_prev is not None else None,
             "cpa": round(c["cost"] / c["conversions"], 2) if c["conversions"] else None,
         })
 
     summary = {"fetched": snapshot["fetched"],
+               "has_real_revenue": has_real,
                "period": {"start": start, "end": end},
                "prev_period": {"start": prev_start, "end": prev_end},
                "totals": snapshot["current"]["totals"],
@@ -203,11 +264,16 @@ def ingest(cur_file, prev_file, daily_file):
     print(f"Period {start} to {end} vs prior {PERIOD_DAYS}d:")
     print(f"  Spend ${t['cost']:,.0f} ({t['cost']-tp['cost']:+,.0f})   "
           f"Conv value ${t['conv_value']:,.0f} ({t['conv_value']-tp['conv_value']:+,.0f})   "
-          f"ROAS {t['roas']} (prev {tp['roas']})   CPA ${t['cpa']} (prev ${tp['cpa']})")
+          f"Blended ROAS {t['roas']} (prev {tp['roas']})   CPA ${t['cpa']} (prev ${tp['cpa']})")
+    if has_real:
+        print(f"  Online order rev ${t['real_conv_value']:,.0f} ({t['real_conv_value']-tp['real_conv_value']:+,.0f})   "
+              f"TRUE ROAS {t['true_roas']} (prev {tp['true_roas']})   "
+              f"[real GA4 web-purchase revenue only]")
     for c in comparison:
         flag = " [ZERO SPEND, ENABLED]" if c["cost"] == 0 else ""
+        troas = f"  TrueROAS {c['true_roas']:>5} (prev {c['true_roas_prev']})" if has_real else ""
         print(f"  {c['name']:<32} spend ${c['cost']:>8,.0f} ({c['cost_delta']:+8,.0f})  "
-              f"ROAS {c['roas']:>5} (prev {c['roas_prev']}){flag}")
+              f"ROAS {c['roas']:>5} (prev {c['roas_prev']}){troas}{flag}")
     if snapshot["meta"]:
         mt = snapshot["meta"]["current"]["totals"]
         mtp = snapshot["meta"]["previous"]["totals"]
@@ -292,13 +358,26 @@ def render():
                 f'<div class="value">{value}</div>'
                 f'<div class="sub">{delta_html} vs prior 28d</div></div>')
 
-    kpis = "".join([
-        kpi("Spend", f"${t['cost']:,.0f}", fmt_delta(round(t["cost"] - tp["cost"]), money=True)),
-        kpi("Conv Value", f"${t['conv_value']:,.0f}", fmt_delta(round(t["conv_value"] - tp["conv_value"]), money=True)),
-        kpi("ROAS", f"{t['roas']}", fmt_delta(round(t["roas"] - tp["roas"], 2), decimals=2)),
-        kpi("Conversions", f"{t['conversions']:,.0f}", fmt_delta(round(t["conversions"] - tp["conversions"]))),
-        kpi("CPA", f"${t['cpa']}", fmt_delta(round(t["cpa"] - tp["cpa"], 2), invert=True, money=True, decimals=2)),
-    ])
+    has_real = snap.get("has_real_revenue") and "true_roas" in t
+    if has_real:
+        kpis = "".join([
+            kpi("Spend", f"${t['cost']:,.0f}", fmt_delta(round(t["cost"] - tp["cost"]), money=True)),
+            kpi("True ROAS (orders)", f"{t['true_roas']:.2f}",
+                fmt_delta(round(t["true_roas"] - tp.get("true_roas", 0), 2), decimals=2)),
+            kpi("Online Order Rev", f"${t['real_conv_value']:,.0f}",
+                fmt_delta(round(t["real_conv_value"] - tp.get("real_conv_value", 0)), money=True)),
+            kpi("Online Orders", f"{t['real_conversions']:,.0f}",
+                fmt_delta(round(t["real_conversions"] - tp.get("real_conversions", 0)))),
+            kpi("Blended ROAS", f"{t['roas']}", fmt_delta(round(t["roas"] - tp["roas"], 2), decimals=2)),
+        ])
+    else:
+        kpis = "".join([
+            kpi("Spend", f"${t['cost']:,.0f}", fmt_delta(round(t["cost"] - tp["cost"]), money=True)),
+            kpi("Conv Value", f"${t['conv_value']:,.0f}", fmt_delta(round(t["conv_value"] - tp["conv_value"]), money=True)),
+            kpi("ROAS", f"{t['roas']}", fmt_delta(round(t["roas"] - tp["roas"], 2), decimals=2)),
+            kpi("Conversions", f"{t['conversions']:,.0f}", fmt_delta(round(t["conversions"] - tp["conversions"]))),
+            kpi("CPA", f"${t['cpa']}", fmt_delta(round(t["cpa"] - tp["cpa"], 2), invert=True, money=True, decimals=2)),
+        ])
 
     rec_html = ""
     for r in recs:
@@ -316,17 +395,56 @@ def render():
         p = prev_by_name.get(c["name"])
         roas = c["conv_value"] / c["cost"] if c["cost"] else 0
         roas_prev = (p["conv_value"] / p["cost"]) if p and p["cost"] else None
-        cpa = c["cost"] / c["conversions"] if c["conversions"] else None
         name = c["name"] + (' <span style="color:#f59e0b;font-size:11px">NO SPEND</span>'
                             if c["cost"] == 0 and c["status"] == "ENABLED" else "")
-        camp_rows += (f'<tr><td>{name}</td>'
-                      f'<td>${c["cost"]:,.0f}</td>'
-                      f'<td>{fmt_delta(round(c["cost"] - (p["cost"] if p else 0)), money=True)}</td>'
-                      f'<td>{c["conversions"]:,.0f}</td>'
-                      f'<td>${c["conv_value"]:,.0f}</td>'
-                      f'<td>{roas:.2f}</td>'
-                      f'<td>{fmt_delta(round(roas - roas_prev, 2), decimals=2) if roas_prev else "–"}</td>'
-                      f'<td>{"$%.2f" % cpa if cpa else "–"}</td></tr>')
+        if has_real:
+            real_val = c.get("real_conv_value", 0)
+            real_conv = c.get("real_conversions", 0)
+            true_roas = real_val / c["cost"] if c["cost"] else 0
+            true_roas_prev = (p.get("real_conv_value", 0) / p["cost"]) if p and p["cost"] else None
+            # red when spend exceeds tracked order revenue (True ROAS < 1), amber
+            # 1.0-1.5, green above.
+            tcolor = "#ef4444" if (c["cost"] and true_roas < 1.0) else (
+                "#f59e0b" if true_roas < 1.5 else "#22c55e")
+            camp_rows += (f'<tr><td>{name}</td>'
+                          f'<td>${c["cost"]:,.0f}</td>'
+                          f'<td>{fmt_delta(round(c["cost"] - (p["cost"] if p else 0)), money=True)}</td>'
+                          f'<td>{real_conv:,.0f}</td>'
+                          f'<td>${real_val:,.0f}</td>'
+                          f'<td style="color:{tcolor};font-weight:700">{true_roas:.2f}</td>'
+                          f'<td>{fmt_delta(round(true_roas - true_roas_prev, 2), decimals=2) if true_roas_prev is not None else "–"}</td>'
+                          f'<td style="color:#94a3b8">{roas:.2f}</td></tr>')
+        else:
+            cpa = c["cost"] / c["conversions"] if c["conversions"] else None
+            camp_rows += (f'<tr><td>{name}</td>'
+                          f'<td>${c["cost"]:,.0f}</td>'
+                          f'<td>{fmt_delta(round(c["cost"] - (p["cost"] if p else 0)), money=True)}</td>'
+                          f'<td>{c["conversions"]:,.0f}</td>'
+                          f'<td>${c["conv_value"]:,.0f}</td>'
+                          f'<td>{roas:.2f}</td>'
+                          f'<td>{fmt_delta(round(roas - roas_prev, 2), decimals=2) if roas_prev else "–"}</td>'
+                          f'<td>{"$%.2f" % cpa if cpa else "–"}</td></tr>')
+
+    if has_real:
+        camp_header = ("<th>Store / Campaign</th><th>Spend</th><th>&Delta; Spend</th>"
+                       "<th>Orders</th><th>Order Rev</th><th>True ROAS</th>"
+                       "<th>&Delta; True ROAS</th><th>Blended ROAS</th>")
+        camp_note = ('<div style="font-size:12px;color:#94a3b8;margin-top:8px;line-height:1.6">'
+                     '<strong style="color:#cbd5e1">True ROAS</strong> = actual online-order revenue '
+                     '(GA4 web "purchase" event, ~$27 avg ticket) &divide; ad spend — the only conversion '
+                     'action tied to real dollars. '
+                     '<strong style="color:#cbd5e1">Blended ROAS</strong> is Google\'s default and also counts '
+                     'proxy actions (directions taps, menu views, CTA clicks) each valued at a flat $1, plus '
+                     'modeled store visits at $0.20 — so it runs ~3&ndash;4&times; higher. '
+                     '<span style="color:#ef4444">True ROAS below 1.00</span> means ad spend exceeded tracked '
+                     'online-order revenue for that store. '
+                     '<em>Caveat: in-store visits driven by these ads are not captured as revenue here, so True '
+                     'ROAS understates full impact for a dine-in/takeout business — treat it as the measurable '
+                     'floor, not the whole return.</em></div>')
+    else:
+        camp_header = ("<th>Campaign</th><th>Spend</th><th>&Delta; Spend</th><th>Conv</th>"
+                       "<th>Conv Value</th><th>ROAS</th><th>&Delta; ROAS</th><th>CPA</th>")
+        camp_note = ""
 
     meta_html = ""
     meta = snap.get("meta")
@@ -415,10 +533,9 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans
   <div class="section-header">Recommendations</div>
   {rec_html}
 
-  <div class="section-header">Google Ads Campaigns (28 days vs prior)</div>
-  <table class="store-table"><thead><tr>
-    <th>Campaign</th><th>Spend</th><th>&Delta; Spend</th><th>Conv</th><th>Conv Value</th><th>ROAS</th><th>&Delta; ROAS</th><th>CPA</th>
-  </tr></thead><tbody>{camp_rows}</tbody></table>
+  <div class="section-header">Google Ads Campaigns by Store (28 days vs prior)</div>
+  <table class="store-table"><thead><tr>{camp_header}</tr></thead><tbody>{camp_rows}</tbody></table>
+  {camp_note}
 {meta_html}
 </div>
 </body></html>"""
@@ -434,7 +551,10 @@ if __name__ == "__main__":
         print(f"current:  {s} to {e}")
         print(f"previous: {ps} to {pe}")
     elif cmd == "ingest":
-        ingest(sys.argv[2], sys.argv[3], sys.argv[4])
+        # ingest CUR PREV DAILY [REAL_CUR REAL_PREV]
+        real_cur = sys.argv[5] if len(sys.argv) > 5 else None
+        real_prev = sys.argv[6] if len(sys.argv) > 6 else None
+        ingest(sys.argv[2], sys.argv[3], sys.argv[4], real_cur, real_prev)
     elif cmd == "render":
         render()
     else:
