@@ -1,27 +1,27 @@
 [
   {
     "type": "concern",
-    "title": "Sun Prairie sales fell to -19.2%, now the worst in the company, while its search is the strongest",
-    "detail": "This was a 'watch' last week at -12.1%; it worsened another 7 points to -19.2%, the deepest decline of any location. Yet search says demand is there: organic clicks rose again (+5% to 433) and its page ranks position 2.2, the best in the company, with a healthy 4.07 ROAS. People are finding Sun Prairie and not buying, so this is a conversion or on-the-ground problem, not a visibility one. Ad spend was already cut 40% ($1,018 to $606), so pouring marketing dollars back in is unlikely to fix it. This needs an operator look this week: hours, staffing, service speed, a new competitor, or a local disruption."
+    "title": "MKE Public Market: spend rose +$114 while sales fell to -10.2% — budget moving the wrong way",
+    "detail": "This was the top concern last week and it worsened on every axis. Spend went UP from $1,013 to $1,127 (now the highest of any location) while net sales slid from -6.5% to -10.2%. ROAS is still the lowest in the company at 2.70, and ad spend is 1.43% of sales versus ~0.5% at the efficient stores. Organic is flat (250 clicks), so this isn't a visibility gap. Last week's recommendation to cut spend was not acted on; instead it climbed and sales fell further. The same dollars return ~1.7x more at Whitefish Bay (4.53) or Brookfield (4.34). Action: cut MKE back toward 0.5-0.7% of sales and stop feeding a channel that isn't reaching the register."
   },
   {
     "type": "concern",
-    "title": "MKE Public Market: highest ad spend + lowest ROAS, now sales AND organic are both falling",
-    "detail": "Last week the concern was that its doubled spend ($1,135, still the highest in the company at 1.45% of sales) was buying flat sales at the account's lowest ROAS (2.51). It got worse, not better: net sales are now down 6.5% and organic clicks fell 11%. Every channel is pointing down while this store carries the biggest ad budget. Those dollars would return roughly 2x more at Brookfield (ROAS 4.76) or Whitefish Bay (4.44). Recommend cutting MKE spend back toward the ~0.5% of sales the efficient stores run and reallocating; the paid push is not reaching the register."
-  },
-  {
-    "type": "win",
-    "title": "Brookfield grew +7.0% while ad spend was cut 33% — the most efficient store this period",
-    "detail": "Best sales growth in the company (+7.0%) came with spend cut from $1,438 to $966 and ROAS climbing to 4.76, the highest of any location, up from 3.87. Spend down, sales up, efficiency up: the textbook good pattern. Organic is also steady (351 clicks, up slightly). The new Brookfield location is ramping on its own momentum and no longer needs to be bought; this is where freed-up MKE budget would work hardest if we want to lean into a winner."
+    "title": "Sun Prairie down -19.6%, still the worst in the company while its search is the strongest",
+    "detail": "A persistent concern, essentially unchanged from -19.2% last week. Search continues to say demand is there: organic clicks rose again to 460 (+8%) and its page ranks position 2.2, the best of any location, with a healthy 3.90 ROAS. People keep finding Sun Prairie and not buying — a conversion or on-the-ground problem, not a marketing one. Spend has already been cut to $556 (from $856), so adding budget won't fix it. This has now been the deepest decline for three weeks running and needs an operator look: hours, staffing, service speed, a new competitor, or a local disruption."
   },
   {
     "type": "watch",
-    "title": "Whitefish Bay: spend cut 55% and sales slipped 5.6% — the cut may have gone too deep",
-    "detail": "Spend was pulled hard, from $1,364 to $611 (-55%, the largest cut of any location), and ROAS improved to 4.44, so each remaining ad dollar works well. But topline fell 5.6% and organic is flat (581 clicks, the most in the company). This is the mirror image of MKE: efficient spend, but possibly too little of it now that sales are sliding. Worth testing a modest budget add-back next period to see if the lost sales come back at a still-healthy ROAS."
+    "title": "Whitefish Bay -7.1% and still sliding after another spend cut — over-cut thesis holding",
+    "detail": "Last week's watch — that the spend cut had gone too deep — is playing out. Spend was pulled again to $557 (from $898) and sales worsened from -5.6% to -7.1%, yet this store has the highest ROAS in the company (4.53) and by far the strongest organic (595 clicks, up +21). Every remaining ad dollar works hard and demand is clearly there; the store is being under-fed at 0.46% of sales. This is the exact opposite of MKE. Action: shift a slice of the MKE budget here and test whether the lost sales come back at a still-excellent ROAS."
+  },
+  {
+    "type": "watch",
+    "title": "Brookfield flipped from +7.0% to -3.6% and now carries the highest ad-spend ratio (1.60%)",
+    "detail": "Last week's standout winner cooled off. Sales went from +7.0% to -3.6%, ROAS eased from 4.71 to 4.34 (still second-best), and spend was trimmed to $971. The flag is the ratio: ad spend is now 1.60% of sales, the highest of any location, on a store that had been growing on its own momentum. Organic is steady (344 clicks). Not a problem yet — the ROAS is strong — but worth watching whether the new location's early ramp is leveling into normal seasonal softness, and whether a 1.6% spend ratio is still justified once growth stops paying for itself."
   },
   {
     "type": "win",
-    "title": "Pewaukee's decline moderated from -10.3% to -3.7% as the demand slide eased",
-    "detail": "Last week Pewaukee was flagged as a real demand decline with every channel down. The sales trend has clearly improved: the drop narrowed from -10.3% to -3.7%. Organic clicks are still soft (292, down 24%) and its ad spend runs a high 1.23% of sales, so it isn't fully healthy, but the worst appears to be passing. Keep the current spend discipline and watch whether organic recovers next week before deciding on any marketing investment."
+    "title": "Middleton and Pewaukee: sales nearly flat on lean ad spend — the efficient pattern",
+    "detail": "Two bright spots against a company-wide down period (all ten stores are negative vs the prior four weeks). Middleton cut spend in half ($1,090 to $558, now the leanest at 0.42% of sales), yet organic clicks rose to 177 (+20%), ROAS climbed to 3.90, and sales held at -4.1%. Pewaukee continued its recovery — from -10.3% two weeks ago to -3.7% last week to essentially flat now (-0.1%). Both show sales holding as spend comes down: efficiency improving, not sales being bought. These are the models for disciplined budgets and the template for the MKE-to-Whitefish-Bay reallocation."
   }
 ]
