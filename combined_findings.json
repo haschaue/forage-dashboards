@@ -1,27 +1,27 @@
 [
   {
     "type": "win",
-    "title": "Sun Prairie snapped back from -19.6% to +1.8% — the conversion gap finally closed",
-    "detail": "For three straight weeks this was the deepest decline in the company (-19.2%, then -19.6%) even though search kept saying demand was there — it still ranks position 2.2, the best of any location, with 405 organic clicks and a healthy 3.90 ROAS. This week sales caught up to the search signal and turned positive, a ~21-point swing with spend held flat at $556 (0.47% of sales). This was the textbook 'people find it but don't buy' pattern, and it resolved on the operator side, not through added budget. Worth a quick confirm with the GM on what changed (hours, staffing, service speed) so it sticks."
-  },
-  {
-    "type": "watch",
-    "title": "MKE Public Market recovered to -0.5% but still spends the most for the least — hold, don't add",
-    "detail": "Last week's top concern improved on the axis that matters: net sales climbed from -10.2% to nearly flat (-0.5%) and ROAS rose from 2.36 to 2.70. But the efficiency flags are all still lit — spend climbed again to $1,127 (up +$114, the highest of any location), ROAS is still the lowest in the company, and ad spend is 1.40% of sales versus ~0.5% at the efficient stores. Organic is steady at 251 clicks, so visibility isn't the issue. The sales recovery justifies not cutting hard, but the same dollars still return ~1.6x more at Whitefish Bay (4.53) or Brookfield (4.34). Action: hold spend flat, don't feed it further, and re-check ROAS next week before deciding whether the recovery is real or seasonal."
-  },
-  {
-    "type": "concern",
-    "title": "Champaign is now the worst decliner at -7.7% with sales AND search both falling — real demand loss",
-    "detail": "This is the one location where the two channels agree in the bad direction: net sales are down -7.7% (from $43,984 to $40,615, the smallest-revenue store) and organic clicks fell -15% (286 to 242). When sales and search decline together it's a genuine demand problem on the ground, not a marketing gap — adding ad budget won't fix it, and spend was already cut to $413. The tell is the ratio: at $40.6k in sales, that $413 is 1.02% of sales, high for a small store. Action: this needs an operator look (local competition, foot traffic, staffing) rather than a budget move."
+    "title": "Sun Prairie completed its turnaround: -19.6% to +3.5%, the biggest swing in the company",
+    "detail": "For three straight weeks this was the deepest decline in the company (around -19%) even though search kept saying demand was there — it still ranks position 2.2, the best of any location, with 405 organic clicks and a strong 4.28 ROAS. Sales have now fully caught up to the search signal and turned solidly positive (+3.5%), a ~23-point swing, with spend actually trimmed to $526 (0.44% of sales). This was the textbook 'people find it but don't buy' pattern and it resolved on the operator side, not through added budget. Worth confirming with the GM what changed (hours, staffing, service speed) so the fix holds."
   },
   {
     "type": "win",
-    "title": "Middleton and Pewaukee prove the lean-spend pattern: -0.2% and +7.8% while budgets came down",
-    "detail": "The two efficiency models both improved again. Middleton is essentially flat (-0.2%, up from -4.1%) on the leanest spend in the company — $558, just 0.42% of sales — with ROAS up to 3.90 and organic steady at 160 clicks. Pewaukee is now the strongest grower at +7.8% (from -0.1%) with spend trimmed to $838. In both cases sales rose as spend fell, which is efficiency improving, not sales being bought. One caution on Pewaukee: its ROAS slipped from 4.21 to 3.53 and ad spend is 1.19% of sales, so the growth is getting more expensive per dollar — watch whether that ratio keeps climbing."
+    "title": "MKE Public Market reversed last week's top concern: spend cut $209, sales flipped to +3.6%",
+    "detail": "This was the #1 concern for two weeks — spend rising while sales fell to -10.2%. That has now cleanly reversed: spend was cut from $1,131 to $922 (-$209) and net sales flipped from -10.2% to +3.6%, with ROAS ticking up from 2.61 to 2.83. The recommended budget discipline was applied and sales recovered rather than falling further, which says the earlier spend was not what was driving the register. One caveat to stay disciplined on: MKE still runs the lowest ROAS in the company (2.83) and the second-highest ad ratio (1.11% of sales), so hold the line here — don't let spend drift back up now that sales have stabilized."
+  },
+  {
+    "type": "concern",
+    "title": "Champaign worsened to -9.8% with sales AND search both falling — the clearest demand problem",
+    "detail": "Against a week where most stores recovered, Champaign went the other way — from -7.7% to -9.8%, now the worst decline in the company. It's the one location where both channels agree in the bad direction: net sales down -9.8% (to $40,120, the smallest-revenue store) and organic clicks down -15% (286 to 242). When sales and search fall together it's a genuine on-the-ground demand problem, not a marketing gap — adding ad budget won't fix it, and spend was already trimmed to $363. Action: this needs an operator look (local competition, foot traffic, staffing, campus seasonality) rather than a budget move."
   },
   {
     "type": "watch",
-    "title": "Whitefish Bay still under-fed: highest ROAS (4.53) and strongest organic, only 0.46% of sales",
-    "detail": "Sales improved from -7.1% to -4.5%, but this store remains the clearest reallocation target. It has the highest ROAS in the company (4.53), by far the strongest organic (604 clicks, up from 578), and yet gets only $557 — 0.46% of sales — while MKE spends $1,127 at a 2.70 ROAS. Every ad dollar works hardest here and demand is plainly there. Action: test shifting a slice of the MKE budget to Whitefish Bay and watch whether the remaining sales softness closes at a still-excellent ROAS. This is the same MKE-to-WFB reallocation flagged last week; the case for it is stronger now that MKE has stabilized."
+    "title": "ROAS eroding at the high-spend stores: Brookfield 5.22 to 3.81, Hilldale 4.93 to 3.44",
+    "detail": "With fresh ads numbers in, two of the bigger-spending locations show efficiency slipping fast. Brookfield's ROAS dropped from 5.22 to 3.81 while it still carries the highest ad ratio in the company (1.42% of sales) and sales sit at -3.3% — the new-location ramp appears to be leveling into normal softness, and the spend ratio is getting harder to justify. Hilldale fell from 4.93 to 3.44 with sales at -5.7%. Neither is a crisis (both still profitable), but the direction is the opposite of the lean stores, and both are spending well above the ~0.44% that the efficient locations run. Action: watch one more week; if ROAS keeps sliding, trim toward the efficient benchmark."
+  },
+  {
+    "type": "win",
+    "title": "Lean-spend pattern still wins: Pewaukee +9.2% and Middleton -0.5% on cut budgets",
+    "detail": "The efficiency models led the recovery. Pewaukee is the strongest grower in the company at +9.2% (up from around -0.1%) with spend trimmed to $737, and Middleton is essentially flat (-0.5%) on the leanest spend anywhere — $531, just 0.40% of sales — with ROAS up to 4.26. In both cases sales rose or held as spend came down: efficiency improving, not sales being bought. The same setup still points at Whitefish Bay as under-fed — it has the highest ROAS in the company (4.59) and by far the strongest organic (604 clicks) yet gets only 0.44% of sales — so it remains the best home for any dollars freed up by the Brookfield/Hilldale trims."
   }
 ]
