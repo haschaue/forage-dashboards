@@ -9,7 +9,8 @@ Usage: python labor_dashboard.py
 Business week: Wednesday through Tuesday
 - On Wednesday, the previous week's data is cleared and the new week begins.
 - Each day, the script pulls data for all completed days in the current week.
-- GM hours are capped at 8 (salaried).
+- GM punches are excluded from the count; the salaried GM is counted as a
+  flat 8 hours per weekday (Mon-Fri), 0 on weekends.
 - Front-of-house roles (Cashier, Register, Customer Service, Host, SB Trainer)
   are excluded from the labor hours total.
 """
@@ -47,9 +48,10 @@ EXCLUDED_JOB_TITLES = {
     "Cashier", "Register", "Customer Service", "Host", "SB Trainer"
 }
 
-# GM cap: General Managers are salaried, count as 8 hours max
+# GM: salaried. Their punches are excluded from the count; instead the GM is
+# counted as a flat 8 hours on each weekday (Mon-Fri), 0 on weekends.
 GM_JOB_TITLE = "General Manager"
-GM_HOURS_CAP = 8.0
+GM_DAILY_HOURS = 8.0
 
 # Day names for the Wed-Tue business week
 WEEKDAY_NAMES = ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue"]
@@ -333,14 +335,8 @@ def pull_labor_detail(token, guid, date, jobs_map, employees_map):
         total = reg_hours + ot_hours
         rate = entry.get("hourlyWage") or 0
 
-        # GM cap
+        # GM punches are not counted (see main()); flag them for display only.
         is_gm = job_title == GM_JOB_TITLE
-        capped = False
-        if is_gm and total > GM_HOURS_CAP:
-            total = GM_HOURS_CAP
-            reg_hours = min(reg_hours, GM_HOURS_CAP)
-            ot_hours = 0
-            capped = True
 
         result.append({
             "name": name,
@@ -350,7 +346,7 @@ def pull_labor_detail(token, guid, date, jobs_map, employees_map):
             "total_hours": round(total, 2),
             "hourly_rate": round(rate, 2),
             "is_gm": is_gm,
-            "capped": capped,
+            "salaried": False,
         })
 
     return result
@@ -458,11 +454,30 @@ def main():
                 all_employees.get(store_num, {})
             )
 
-            # Calculate actual hours (excluding front-of-house)
+            # Actual hours: exclude front-of-house AND GM punches. The salaried
+            # GM is counted as a flat 8h on weekdays (Mon-Fri), 0 on weekends.
+            gm_flat = GM_DAILY_HOURS if day.weekday() < 5 else 0.0
             actual_hours = 0
             for entry in day_labor:
-                if entry["job_title"] not in EXCLUDED_JOB_TITLES:
-                    actual_hours += entry["total_hours"]
+                jt = entry["job_title"]
+                if jt in EXCLUDED_JOB_TITLES or jt == GM_JOB_TITLE:
+                    continue
+                actual_hours += entry["total_hours"]
+            actual_hours += gm_flat
+
+            # Inject a synthetic salaried-GM line so the employee detail ties
+            # out to the counted total (GM may not punch in at all).
+            if gm_flat > 0:
+                day_labor.append({
+                    "name": "General Manager (salaried)",
+                    "job_title": GM_JOB_TITLE,
+                    "regular_hours": gm_flat,
+                    "overtime_hours": 0.0,
+                    "total_hours": gm_flat,
+                    "hourly_rate": 0,
+                    "is_gm": True,
+                    "salaried": True,
+                })
 
             # Calculate ideal hours
             ideal_hours = lookup_ideal_hours(sales["net_sales"])
@@ -528,16 +543,21 @@ def build_dashboard_data(all_data, week_start, week_end, week_dates, days_to_pul
             day_data = store_data.get(date_str, None)
 
             if day_data and wd <= min(today - timedelta(days=1), week_end):
+                # Round ideal/actual to whole hours; derive variance from the
+                # rounded values so each row (and the WTD total) ties out.
+                ideal_r = round(day_data["ideal_hours"])
+                actual_r = round(day_data["actual_hours"])
+                var_r = actual_r - ideal_r
                 wtd_sales += day_data["net_sales"]
-                wtd_ideal += day_data["ideal_hours"]
-                wtd_actual += day_data["actual_hours"]
+                wtd_ideal += ideal_r
+                wtd_actual += actual_r
                 days.append({
                     "day": day_name,
                     "date": date_str,
                     "sales": round(day_data["net_sales"], 0),
-                    "ideal": round(day_data["ideal_hours"], 1),
-                    "actual": round(day_data["actual_hours"], 1),
-                    "variance": round(day_data["variance"], 1),
+                    "ideal": ideal_r,
+                    "actual": actual_r,
+                    "variance": var_r,
                     "labor_detail": day_data.get("labor_detail", []),
                     "has_data": True,
                 })
@@ -558,9 +578,9 @@ def build_dashboard_data(all_data, week_start, week_end, week_dates, days_to_pul
             "name": display_name,
             "days": days,
             "wtd_sales": round(wtd_sales, 0),
-            "wtd_ideal": round(wtd_ideal, 1),
-            "wtd_actual": round(wtd_actual, 1),
-            "wtd_variance": round(wtd_actual - wtd_ideal, 1),
+            "wtd_ideal": wtd_ideal,
+            "wtd_actual": wtd_actual,
+            "wtd_variance": wtd_actual - wtd_ideal,
         })
 
     return {
@@ -572,7 +592,7 @@ def build_dashboard_data(all_data, week_start, week_end, week_dates, days_to_pul
         "wage_guidelines": WAGE_GUIDELINES,
         "variance_allowances": VARIANCE_ALLOWANCES,
         "excluded_roles": list(EXCLUDED_JOB_TITLES),
-        "gm_cap": GM_HOURS_CAP,
+        "gm_daily": GM_DAILY_HOURS,
     }
 
 
@@ -685,7 +705,7 @@ def generate_html(data_json):
 
   <div class="refresh-notice">
     Run <code>python labor_dashboard.py</code> or double-click <code>refresh_labor.bat</code> to update
-    &bull; GM hours capped at 8 &bull; Excludes: Cashier, Register, Customer Service, Host, SB Trainer
+    &bull; GM = flat 8h Mon&ndash;Fri &bull; Excludes: Cashier, Register, Customer Service, Host, SB Trainer
   </div>
 </div>
 
@@ -705,13 +725,14 @@ def generate_html(data_json):
 const D = {data_json};
 
 const fmt = (n) => n == null || n === 0 ? '—' : '$' + Number(n).toLocaleString('en-US', {{minimumFractionDigits:0, maximumFractionDigits:0}});
-const fmtHrs = (n) => n == null ? '—' : Number(n).toFixed(1);
+const fmtHrs = (n) => n == null ? '—' : Math.round(Number(n)).toString();
 const fmtVar = (n, hasData) => {{
   if (!hasData) return '<span class="var-zero">—</span>';
-  if (n === 0) return '<span class="var-zero">0.0</span>';
-  const cls = n > 0 ? 'var-positive' : 'var-negative';
-  const sign = n > 0 ? '+' : '';
-  return `<span class="${{cls}}">${{sign}}${{n.toFixed(1)}}</span>`;
+  const r = Math.round(n);
+  if (r === 0) return '<span class="var-zero">0</span>';
+  const cls = r > 0 ? 'var-positive' : 'var-negative';
+  const sign = r > 0 ? '+' : '';
+  return `<span class="${{cls}}">${{sign}}${{r}}</span>`;
 }};
 
 // Header
@@ -751,7 +772,7 @@ D.locations.forEach((loc, idx) => {{
   card.innerHTML = `
     <div class="loc-header" onclick="openDetail(${{idx}})">
       <h3>${{loc.name}}</h3>
-      <span class="wtd-badge ${{varCls}}">WTD: ${{varSign}}${{loc.wtd_variance.toFixed(1)}}h</span>
+      <span class="wtd-badge ${{varCls}}">WTD: ${{varSign}}${{Math.round(loc.wtd_variance)}}h</span>
     </div>
     <table class="loc-table">
       <thead><tr><th>Day</th><th>Sales</th><th>Ideal Hrs</th><th>Actual Hrs</th><th>Variance</th></tr></thead>
@@ -787,7 +808,7 @@ Object.entries(D.variance_allowances).forEach(([k, v]) => {{
 }});
 varHtml += `</tbody></table>
 <div style="margin-top:10px; font-size:11px; color:#64748b;">
-  <div>GM hours capped at ${{D.gm_cap}}h (salaried)</div>
+  <div>GM counted as flat ${{D.gm_daily}}h Mon&ndash;Fri (salaried; punches excluded)</div>
   <div>Excluded roles: ${{D.excluded_roles.join(', ')}}</div>
 </div>`;
 varRef.innerHTML = varHtml;
@@ -840,10 +861,17 @@ function showDayDetail(locIdx, dayIdx) {{
     return;
   }}
 
-  // Separate included and excluded employees
+  // Separate counted and not-counted employees. Front-of-house roles and real
+  // GM punches are not counted; the salaried-GM flat line is.
   const excluded = {json.dumps(list(EXCLUDED_JOB_TITLES))};
-  const included = day.labor_detail.filter(e => !excluded.includes(e.job_title));
-  const excludedEntries = day.labor_detail.filter(e => excluded.includes(e.job_title));
+  const GM_TITLE = {json.dumps(GM_JOB_TITLE)};
+  const isCounted = (e) => {{
+    if (excluded.includes(e.job_title)) return false;
+    if (e.job_title === GM_TITLE && !e.salaried) return false;
+    return true;
+  }};
+  const included = day.labor_detail.filter(isCounted);
+  const excludedEntries = day.labor_detail.filter(e => !isCounted(e));
 
   // Sort: GMs first, then by hours descending
   included.sort((a, b) => {{
@@ -867,7 +895,7 @@ function showDayDetail(locIdx, dayIdx) {{
     totalReg += e.regular_hours;
     totalOT += e.overtime_hours;
     totalHrs += e.total_hours;
-    const gmBadge = e.is_gm ? (e.capped ? '<span class="gm-badge">GM capped at 8h</span>' : '<span class="gm-badge">GM</span>') : '';
+    const gmBadge = e.is_gm ? (e.salaried ? '<span class="gm-badge">GM • salaried 8h</span>' : '<span class="gm-badge">GM</span>') : '';
     const cls = e.is_gm ? 'gm-row' : '';
     html += `<tr class="${{cls}}">
       <td>${{e.name}}${{gmBadge}}</td>
@@ -890,7 +918,7 @@ function showDayDetail(locIdx, dayIdx) {{
 
   // Show excluded employees if any
   if (excludedEntries.length > 0) {{
-    html += `<div style="margin-top:16px; font-size:12px; color:#64748b;">Excluded from hours total (front-of-house):</div>`;
+    html += `<div style="margin-top:16px; font-size:12px; color:#64748b;">Excluded from hours total (front-of-house &amp; GM punches):</div>`;
     html += `<table class="emp-table" style="margin-top:4px;"><tbody>`;
     excludedEntries.forEach(e => {{
       html += `<tr class="excluded-row">
