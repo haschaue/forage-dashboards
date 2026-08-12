@@ -369,10 +369,20 @@ def main():
     yesterday = today - timedelta(days=1)
     week_start = get_week_start(today)
     week_end = week_start + timedelta(days=6)
-    week_dates = get_week_dates(week_start)
 
     # Data end: yesterday or week_end, whichever is earlier
     data_end = min(yesterday, week_end)
+
+    # On Wednesday (the first day of the business week), the current week has
+    # no completed days yet, so data_end < week_start and everything is blank.
+    # Fall back to the previous week, which is complete through yesterday (Tue),
+    # so the dashboard shows the week that just finished instead of a blank one.
+    if data_end < week_start:
+        week_start = week_start - timedelta(days=7)
+        week_end = week_start + timedelta(days=6)
+        data_end = min(yesterday, week_end)
+
+    week_dates = get_week_dates(week_start)
 
     # Days to pull: from week_start through data_end
     days_to_pull = []
