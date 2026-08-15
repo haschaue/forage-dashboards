@@ -53,6 +53,14 @@ EXCLUDED_JOB_TITLES = {
 GM_JOB_TITLE = "General Manager"
 GM_DAILY_HOURS = 8.0
 
+# Refunds: Toast attributes a refund to the business date it was PROCESSED
+# (refund.refundBusinessDate), not the original sale date, and its
+# refund.refundAmount is tax-inclusive and excludes tip. To match Toast's Net
+# Sales we subtract the pre-tax refund amount from the day it was processed.
+# Because a refund can be processed days after the sale, we scan this many days
+# before the week start so in-week refunds of earlier sales are captured.
+REFUND_LOOKBACK_DAYS = 14
+
 # Day names for the Wed-Tue business week
 WEEKDAY_NAMES = ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue"]
 
@@ -233,6 +241,11 @@ def pull_orders_day(token, guid, date):
     Deferred selections (gift card purchases) are excluded since they are
     not food/bev revenue.
 
+    This returns GROSS net sales (before refunds). Refunds are handled
+    separately in pull_refund_reductions() and subtracted in main() on the
+    date Toast processed them, because a refund's business date usually differs
+    from the sale date.
+
     Note: This formula matches Toast's Group Sales Overview exactly for most
     locations. A few locations may show a small variance (<1%) due to
     internal Toast reporting adjustments not exposed through the Orders API.
@@ -272,6 +285,64 @@ def pull_orders_day(token, guid, date):
         totals["avg_order"] = 0
         totals["avg_guest"] = 0
     return totals
+
+
+def pull_refund_reductions(token, guid, start_date, end_date):
+    """Scan orders whose SALE business date is in [start_date, end_date] and
+    return {refund_business_date 'YYYY-MM-DD': pretax_refund_total}.
+
+    Toast records refunds at the payment level (payment.refundStatus and
+    payment.refund) and attributes them to refund.refundBusinessDate -- the day
+    the refund was processed, which is usually a day or more after the sale.
+    refund.refundAmount is tax-inclusive and excludes tip, so we scale it down
+    to a pre-tax figure using the check's tax ratio before returning it. That
+    matches how Toast reduces Net Sales on the refund's processing date.
+    """
+    reductions = defaultdict(float)
+    d = start_date
+    while d <= end_date:
+        biz = d.strftime("%Y%m%d")
+        page = 1
+        while True:
+            url = (f"{TOAST_API_BASE}/orders/v2/ordersBulk"
+                   f"?businessDate={biz}&pageSize=100&page={page}")
+            try:
+                orders = toast_get(url, token, guid)
+            except Exception:
+                orders = []
+            for order in orders:
+                if order.get("voided") or order.get("deleted"):
+                    continue
+                for check in order.get("checks", []):
+                    if check.get("voided") or check.get("deleted"):
+                        continue
+                    amt = check.get("amount") or 0
+                    tax = check.get("taxAmount") or 0
+                    # No pre-tax sales on this check -> nothing to reduce.
+                    if amt <= 0:
+                        continue
+                    for pay in check.get("payments", []):
+                        status = pay.get("refundStatus")
+                        if not status or status == "NONE":
+                            continue
+                        refund = pay.get("refund") or {}
+                        ramt = refund.get("refundAmount") or 0
+                        if ramt <= 0:
+                            continue
+                        # refundAmount is tax-inclusive; scale to pre-tax.
+                        pretax = ramt * amt / (amt + tax) if (amt + tax) else 0
+                        rbd = refund.get("refundBusinessDate")
+                        if not rbd:
+                            continue
+                        rbd = str(rbd)
+                        key = f"{rbd[0:4]}-{rbd[4:6]}-{rbd[6:8]}"
+                        reductions[key] += pretax
+            if len(orders) < 100:
+                break
+            page += 1
+        time.sleep(0.15)
+        d += timedelta(days=1)
+    return dict(reductions)
 
 
 def pull_jobs(token, guid):
@@ -426,6 +497,12 @@ def main():
         if store_num not in all_data:
             all_data[store_num] = {"days": {}}
 
+        # Refund reductions (pre-tax) keyed by the date Toast processed the
+        # refund. Scanned every run so the displayed week always reflects
+        # refunds, including ones processed in-week for earlier sales.
+        refund_start = week_start - timedelta(days=REFUND_LOOKBACK_DAYS)
+        refund_map = pull_refund_reductions(token, r["guid"], refund_start, data_end)
+
         for day in days_to_pull:
             date_str = day.strftime("%Y-%m-%d")
             day_name = day.strftime("%a")
@@ -479,11 +556,19 @@ def main():
                     "salaried": True,
                 })
 
-            # Calculate ideal hours
-            ideal_hours = lookup_ideal_hours(sales["net_sales"])
+            # Subtract refunds Toast attributed to THIS day (refund-date basis)
+            # to get net sales, matching Toast's Net Sales figure.
+            gross_sales = sales["net_sales"]
+            refund_reduction = round(refund_map.get(date_str, 0.0), 2)
+            net_sales = round(gross_sales - refund_reduction, 2)
+
+            # Calculate ideal hours from refund-adjusted net sales
+            ideal_hours = lookup_ideal_hours(net_sales)
 
             all_data[store_num]["days"][date_str] = {
-                "net_sales": sales["net_sales"],
+                "net_sales": net_sales,
+                "gross_sales": gross_sales,
+                "refund_reduction": refund_reduction,
                 "orders": sales["orders"],
                 "guests": sales["guests"],
                 "avg_order": sales.get("avg_order", 0),
@@ -493,8 +578,8 @@ def main():
                 "variance": round(actual_hours - ideal_hours, 2),
                 "labor_detail": day_labor,
             }
-            ns = sales["net_sales"]
-            print(f"${ns:,.0f} | ideal: {ideal_hours:.0f}h | actual: {actual_hours:.0f}h | var: {actual_hours - ideal_hours:+.0f}h")
+            refund_note = f" | refunds -${refund_reduction:,.0f}" if refund_reduction else ""
+            print(f"${net_sales:,.0f} | ideal: {ideal_hours:.0f}h | actual: {actual_hours:.0f}h | var: {actual_hours - ideal_hours:+.0f}h{refund_note}")
 
             time.sleep(0.15)
 
