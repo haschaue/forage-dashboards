@@ -40,6 +40,86 @@ from toast_config import (
 
 SSL_CTX = ssl.create_default_context()
 
+# ============================================================
+# OFF-SITE SALES (prior-year normalization)
+# ============================================================
+# One-off off-site / event sales that rang through a store's POS in a prior year
+# and have no current-year equivalent. Left in the prior-year base they make
+# same-store growth look worse than the underlying business, so the dashboard
+# also reports an "ex off-site" SSS that removes them from the PY side only.
+# Current-year sales are never touched.
+#
+# A lump sum given for a date range is spread evenly across the days in that
+# range. If exact daily figures turn up, split the entry into one row per day.
+OFFSITE_EVENTS = [
+    {"store": "8002", "start": "2025-08-12", "end": "2025-08-15", "amount": 12282.00,
+     "note": "Off-site events, Aug 2025"},
+    {"store": "8002", "start": "2025-08-18", "end": "2025-08-22", "amount": 15070.00,
+     "note": "Off-site events, Aug 2025"},
+    {"store": "8002", "start": "2025-08-25", "end": "2025-08-25", "amount": 3178.00,
+     "note": "Off-site events, Aug 2025"},
+]
+
+
+def build_offsite_map():
+    """Expand OFFSITE_EVENTS into {store_num: {date_str: net_sales}}."""
+    by_store = defaultdict(dict)
+    for ev in OFFSITE_EVENTS:
+        start = datetime.strptime(ev["start"], "%Y-%m-%d")
+        end = datetime.strptime(ev["end"], "%Y-%m-%d")
+        per_day = ev["amount"] / ((end - start).days + 1)
+        current = start
+        while current <= end:
+            date_str = current.strftime("%Y-%m-%d")
+            store = by_store[ev["store"]]
+            store[date_str] = store.get(date_str, 0) + per_day
+            current += timedelta(days=1)
+    return dict(by_store)
+
+
+OFFSITE_BY_STORE = build_offsite_map()
+
+
+def offsite_amount(store_num, date_str):
+    """Off-site sales rung up at `store_num` on `date_str` (0 if none)."""
+    return OFFSITE_BY_STORE.get(store_num, {}).get(date_str, 0)
+
+
+def summarize_offsite(prior_sales):
+    """Per-event off-site detail, limited to PY days actually in the comparison.
+
+    Only counts days present in `prior_sales`, so a partially-completed period
+    reports only the portion of an event that is inside the compared window.
+    """
+    events = []
+    for ev in OFFSITE_EVENTS:
+        py_days = prior_sales.get(ev["store"], {})
+        start = datetime.strptime(ev["start"], "%Y-%m-%d")
+        end = datetime.strptime(ev["end"], "%Y-%m-%d")
+        total_days = (end - start).days + 1
+        per_day = ev["amount"] / total_days
+        applied, days_applied = 0, 0
+        current = start
+        while current <= end:
+            if current.strftime("%Y-%m-%d") in py_days:
+                applied += per_day
+                days_applied += 1
+            current += timedelta(days=1)
+        if applied > 0:
+            events.append({
+                "store": ev["store"],
+                "store_name": SSS_CONFIG.get(ev["store"], {}).get("name", ev["store"]),
+                "start": ev["start"],
+                "end": ev["end"],
+                "amount": round(ev["amount"], 2),
+                "applied": round(applied, 2),
+                "days_applied": days_applied,
+                "days_total": total_days,
+                "note": ev.get("note", ""),
+            })
+    return events
+
+
 # Weather markets (Open-Meteo: free, no API key)
 WEATHER_MARKETS = {
     "Madison": {"lat": 43.07, "lon": -89.40, "stores": ["8001", "8002", "8003", "8004", "8007"]},
@@ -543,7 +623,7 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
             "name": store_name,
             "net_sales": 0, "gross_sales": 0, "guests": 0, "checks": 0,
             "labor_cost": 0, "labor_hours": 0,
-            "py_net_sales": 0, "py_guests": 0,
+            "py_net_sales": 0, "py_guests": 0, "py_offsite": 0,
             "daily": []
         }
 
@@ -578,26 +658,40 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
             day_sales = store_py[date_str]
             totals["py_net_sales"] += day_sales.get("net_sales", 0)
             totals["py_guests"] += day_sales.get("guests", 0)
+            totals["py_offsite"] += offsite_amount(store_num, date_str)
+
+        # PY base with prior-year off-site sales stripped out
+        totals["py_net_sales_adj"] = totals["py_net_sales"] - totals["py_offsite"]
 
         # Match PY daily data by day-of-period
         py_dates = sorted(store_py.keys())
         for i, entry in enumerate(totals["daily"]):
             if i < len(py_dates):
-                py_day_sales = store_py.get(py_dates[i], {})
+                py_date = py_dates[i]
+                py_day_sales = store_py.get(py_date, {})
+                entry["py_date"] = py_date
                 entry["py_net_sales"] = round(py_day_sales.get("net_sales", 0), 2)
+                entry["py_offsite"] = round(offsite_amount(store_num, py_date), 2)
             else:
+                entry["py_date"] = None
                 entry["py_net_sales"] = 0
+                entry["py_offsite"] = 0
 
         # Summary metrics
         ns = totals["net_sales"]
         totals["labor_pct"] = round(totals["labor_cost"] / ns * 100, 1) if ns > 0 else 0
         totals["avg_check"] = round(ns / totals["checks"], 2) if totals["checks"] > 0 else 0
         totals["sss_growth"] = None
+        totals["sss_growth_adj"] = None
         sss_cfg = SSS_CONFIG.get(store_num, {})
         sss_start = sss_cfg.get("sss_start_period")
         if sss_start and period >= sss_start and totals["py_net_sales"] > 0:
             totals["sss_growth"] = round(
                 (totals["net_sales"] - totals["py_net_sales"]) / totals["py_net_sales"] * 100, 1
+            )
+        if sss_start and period >= sss_start and totals["py_net_sales_adj"] > 0:
+            totals["sss_growth_adj"] = round(
+                (totals["net_sales"] - totals["py_net_sales_adj"]) / totals["py_net_sales_adj"] * 100, 1
             )
 
         # Budget data
@@ -639,6 +733,14 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
         else:
             totals["today_py_net_sales"] = 0
 
+        # Off-site inside today's PY comparison day
+        if today_py_date and totals["today_py_net_sales"] > 0:
+            totals["today_py_offsite"] = round(
+                offsite_amount(store_num, today_py_date.strftime("%Y-%m-%d")), 2
+            )
+        else:
+            totals["today_py_offsite"] = 0
+
         store_totals[store_num] = totals
 
     # All stores combined
@@ -651,11 +753,14 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
         "labor_cost": sum(s["labor_cost"] for s in store_totals.values()),
         "labor_hours": sum(s["labor_hours"] for s in store_totals.values()),
         "py_net_sales": sum(s["py_net_sales"] for s in store_totals.values()),
+        "py_offsite": sum(s["py_offsite"] for s in store_totals.values()),
         "today_net_sales": sum(s["today_net_sales"] for s in store_totals.values()),
         "today_checks": sum(s["today_checks"] for s in store_totals.values()),
         "today_guests": sum(s["today_guests"] for s in store_totals.values()),
         "today_py_net_sales": sum(s["today_py_net_sales"] for s in store_totals.values()),
+        "today_py_offsite": sum(s["today_py_offsite"] for s in store_totals.values()),
     }
+    all_stores["py_net_sales_adj"] = all_stores["py_net_sales"] - all_stores["py_offsite"]
     ns = all_stores["net_sales"]
     all_stores["labor_pct"] = round(all_stores["labor_cost"] / ns * 100, 1) if ns > 0 else 0
     all_stores["avg_check"] = round(ns / all_stores["checks"], 2) if all_stores["checks"] > 0 else 0
@@ -672,6 +777,18 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
            period >= SSS_CONFIG[num]["sss_start_period"]
     )
     all_stores["sss_growth"] = round((sss_current - sss_prior) / sss_prior * 100, 1) if sss_prior > 0 else None
+
+    # SSS with prior-year off-site sales removed from the base
+    sss_prior_offsite = sum(
+        s["py_offsite"] for num, s in store_totals.items()
+        if SSS_CONFIG.get(num, {}).get("sss_start_period") and
+           period >= SSS_CONFIG[num]["sss_start_period"]
+    )
+    sss_prior_adj = sss_prior - sss_prior_offsite
+    all_stores["sss_offsite"] = round(sss_prior_offsite, 2)
+    all_stores["sss_growth_adj"] = round(
+        (sss_current - sss_prior_adj) / sss_prior_adj * 100, 1
+    ) if sss_prior_adj > 0 else None
 
     # Budget for all stores
     if budget and "ALL" in budget:
@@ -724,11 +841,18 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
             for sn in store_numbers
         )
         py_day_ns = 0
+        py_day_offsite = 0
+        py_date = None
         if i < len(py_all_dates):
             py_date = py_all_dates[i]
             py_day_ns = sum(
                 prior_sales.get(sn, {}).get(py_date, {}).get("net_sales", 0)
                 for sn in store_numbers
+            )
+            py_day_offsite = sum(
+                offsite_amount(sn, py_date)
+                for sn in store_numbers
+                if py_date in prior_sales.get(sn, {})
             )
         all_stores["daily"].append({
             "date": date_str,
@@ -737,8 +861,16 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
             "labor_pct": round(day_lc / day_ns * 100, 1) if day_ns > 0 else 0,
             "guests": day_guests,
             "checks": day_checks,
+            "py_date": py_date,
             "py_net_sales": round(py_day_ns, 2),
+            "py_offsite": round(py_day_offsite, 2),
         })
+
+    offsite_events = summarize_offsite(prior_sales)
+    if offsite_events:
+        applied = sum(e["applied"] for e in offsite_events)
+        print(f"  Off-site adjustment: -${applied:,.0f} from PY base "
+              f"({len(offsite_events)} event(s))")
 
     return {
         "generated": datetime.now().isoformat(),
@@ -758,6 +890,8 @@ def build_period_data(token, fy, period, period_start, period_end, today, yester
         "today_py_date": today_py_date.strftime("%Y-%m-%d") if today_py_date else None,
         "today_weather": today_weather,
         "py_weather": py_weather,
+        "offsite_events": offsite_events,
+        "has_offsite": bool(offsite_events),
     }
 
 
@@ -831,6 +965,13 @@ def main():
     ytd_py_net_sales = sum(p["all_stores"]["py_net_sales"] for p in periods.values())
     ytd_growth = round((ytd_net_sales - ytd_py_net_sales) / ytd_py_net_sales * 100, 1) if ytd_py_net_sales > 0 else None
 
+    # YTD with prior-year off-site sales removed from the base
+    ytd_py_offsite = sum(p["all_stores"]["py_offsite"] for p in periods.values())
+    ytd_py_adj = ytd_py_net_sales - ytd_py_offsite
+    ytd_growth_adj = round(
+        (ytd_net_sales - ytd_py_adj) / ytd_py_adj * 100, 1
+    ) if ytd_py_adj > 0 else None
+
     # Round all floats
     def round_dict(d):
         if isinstance(d, dict):
@@ -850,6 +991,8 @@ def main():
         "ytd_net_sales": round(ytd_net_sales, 2),
         "ytd_py_net_sales": round(ytd_py_net_sales, 2),
         "ytd_growth": ytd_growth,
+        "ytd_py_offsite": round(ytd_py_offsite, 2),
+        "ytd_growth_adj": ytd_growth_adj,
     }
 
     # Generate HTML
@@ -948,6 +1091,13 @@ def generate_html(data_json):
   .tab-content {{ display: none; }}
   .tab-content.active {{ display: block; }}
 
+  /* Off-site adjustment footnote */
+  .offsite-note {{ background: #1e293b; border: 1px solid #422006; border-left: 3px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 13px; color: #94a3b8; line-height: 1.6; }}
+  .offsite-note strong {{ color: #f59e0b; }}
+  .offsite-note ul {{ margin: 6px 0 0 18px; }}
+  .offsite-note li {{ margin-bottom: 2px; }}
+  .offsite-tag {{ font-size: 11px; color: #f59e0b; display: block; }}
+
   /* Refresh notice */
   .refresh-notice {{ text-align: center; padding: 12px; color: #64748b; font-size: 12px; margin-top: 20px; }}
 
@@ -991,6 +1141,7 @@ def generate_html(data_json):
   <!-- Store Scoreboard -->
   <div class="section-header">Store Scoreboard &mdash; Period to Date</div>
   <table class="store-table" id="storeTable"></table>
+  <div id="offsiteNote" style="display:none"></div>
 
   <!-- Daily Detail by Store -->
   <div class="section-header">Daily Detail</div>
@@ -1010,6 +1161,8 @@ let D = PERIODS[ALLDATA.default];
 const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const fmt = (n) => n == null ? '\u2014' : '$' + Number(n).toLocaleString('en-US', {{minimumFractionDigits:0, maximumFractionDigits:0}});
 const fmtPct = (n) => n == null ? '\u2014' : n.toFixed(1) + '%';
+// Signed percent, no color markup (for inline sub-labels)
+const pct = (n) => n == null ? '\u2014' : (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
 const fmtChange = (n) => {{
   if (n == null) return '<span class="neutral">N/A</span>';
   const cls = n >= 0 ? 'positive' : 'negative';
@@ -1032,33 +1185,47 @@ let salesChartInstance = null;
 let laborChartInstance = null;
 
 function buildDailyTable(daily) {{
+  // Extra "ex off-site" column only for tabs that actually have an adjustment
+  const tabHasOffsite = daily.some(d => (d.py_offsite || 0) > 0);
   let html = `<table class="daily-table"><thead><tr>
     <th style="text-align:left">Date</th>
     <th>Net Sales</th>
     <th>Prior Year</th>
+    ${{tabHasOffsite ? '<th style="color:#f59e0b">PY ex Off-site*</th>' : ''}}
     <th>YoY Change</th>
+    ${{tabHasOffsite ? '<th style="color:#f59e0b">YoY ex Off-site*</th>' : ''}}
     <th>Labor $</th>
     <th>Labor %</th>
     <th>Guests</th>
   </tr></thead><tbody>`;
 
-  let totalNS = 0, totalPY = 0, totalLC = 0, totalGuests = 0;
+  let totalNS = 0, totalPY = 0, totalPYAdj = 0, totalLC = 0, totalGuests = 0;
   daily.forEach(d => {{
     const dt = new Date(d.date + 'T12:00:00');
     const dayName = dayNames[dt.getDay()];
+    const pyAdj = d.py_net_sales - (d.py_offsite || 0);
     const yoyPct = d.py_net_sales > 0 ? ((d.net_sales - d.py_net_sales) / d.py_net_sales * 100) : null;
+    const yoyAdjPct = pyAdj > 0 ? ((d.net_sales - pyAdj) / pyAdj * 100) : null;
     const laborCls = d.labor_pct > 35 ? 'negative' : d.labor_pct > 30 ? 'neutral' : 'positive';
 
     totalNS += d.net_sales;
     totalPY += d.py_net_sales;
+    totalPYAdj += pyAdj;
     totalLC += d.labor_cost;
     totalGuests += d.guests || 0;
+
+    const adjCells = !tabHasOffsite ? '' :
+      '<td style="color:#f59e0b">' + ((d.py_offsite || 0) > 0 ? fmt(pyAdj) : '<span class="neutral">\u2014</span>') + '</td>';
+    const adjYoyCells = !tabHasOffsite ? '' :
+      '<td>' + ((d.py_offsite || 0) > 0 && yoyAdjPct != null ? fmtChange(yoyAdjPct) : '<span class="neutral">\u2014</span>') + '</td>';
 
     html += `<tr>
       <td><span class="day-name">${{dayName}}</span> ${{d.date}}</td>
       <td>${{fmt(d.net_sales)}}</td>
       <td style="color:#64748b">${{fmt(d.py_net_sales)}}</td>
+      ${{adjCells}}
       <td>${{yoyPct != null ? fmtChange(yoyPct) : '<span class="neutral">\u2014</span>'}}</td>
+      ${{adjYoyCells}}
       <td>${{fmt(d.labor_cost)}}</td>
       <td><span class="${{laborCls}}">${{fmtPct(d.labor_pct)}}</span></td>
       <td>${{(d.guests || 0).toLocaleString()}}</td>
@@ -1068,12 +1235,15 @@ function buildDailyTable(daily) {{
   // Totals row
   const totalLaborPct = totalNS > 0 ? totalLC / totalNS * 100 : 0;
   const totalYoy = totalPY > 0 ? ((totalNS - totalPY) / totalPY * 100) : null;
+  const totalYoyAdj = totalPYAdj > 0 ? ((totalNS - totalPYAdj) / totalPYAdj * 100) : null;
   const totalLaborCls = totalLaborPct > 35 ? 'negative' : totalLaborPct > 30 ? 'neutral' : 'positive';
   html += `<tr style="background:#334155;font-weight:700">
     <td>TOTAL</td>
     <td>${{fmt(totalNS)}}</td>
     <td style="color:#64748b">${{fmt(totalPY)}}</td>
+    ${{tabHasOffsite ? '<td style="color:#f59e0b">' + fmt(totalPYAdj) + '</td>' : ''}}
     <td>${{totalYoy != null ? fmtChange(totalYoy) : '<span class="neutral">\u2014</span>'}}</td>
+    ${{tabHasOffsite ? '<td>' + (totalYoyAdj != null ? fmtChange(totalYoyAdj) : '<span class="neutral">\u2014</span>') + '</td>' : ''}}
     <td>${{fmt(totalLC)}}</td>
     <td><span class="${{totalLaborCls}}">${{fmtPct(totalLaborPct)}}</span></td>
     <td>${{totalGuests.toLocaleString()}}</td>
@@ -1097,7 +1267,16 @@ function renderDashboard(D) {{
   if (D.today_in_period && a.today_net_sales > 0) {{
     const todayPyNS = a.today_py_net_sales || 0;
     const todayYoY = todayPyNS > 0 ? ((a.today_net_sales - todayPyNS) / todayPyNS * 100) : null;
-    const pyDateStr = D.today_py_date ? (' \u00b7 PY: ' + fmt(todayPyNS) + ' (' + D.today_py_date + ')') : '';
+    let pyDateStr = D.today_py_date ? (' \u00b7 PY: ' + fmt(todayPyNS) + ' (' + D.today_py_date + ')') : '';
+    // Flag off-site dollars sitting in today's PY comparison day
+    const todayPyOffsite = a.today_py_offsite || 0;
+    if (todayPyOffsite > 0) {{
+      const todayPyAdj = todayPyNS - todayPyOffsite;
+      const todayYoYAdj = todayPyAdj > 0 ? ((a.today_net_sales - todayPyAdj) / todayPyAdj * 100) : null;
+      pyDateStr += '<span class="offsite-tag">PY incl. ' + fmt(todayPyOffsite)
+                 + ' off-site \u2014 ex off-site: ' + fmt(todayPyAdj)
+                 + (todayYoYAdj != null ? ' (' + pct(todayYoYAdj) + ')' : '') + '*</span>';
+    }}
 
     // Build weather summary
     let weatherHtml = '';
@@ -1121,10 +1300,23 @@ function renderDashboard(D) {{
 
     kpis.push({{ label: "Today's Sales (Live)", value: fmt(a.today_net_sales), sub: a.today_checks + ' checks \u00b7 ' + a.today_guests + ' guests' + pyDateStr, change: todayYoY, changeLabel: 'vs PY day', highlight: 1, today: true, weatherHtml: weatherHtml }});
   }}
+  // Prior-year off-site adjustment (see offsiteNote below the scoreboard)
+  const hasOffsite = !!D.has_offsite;
+  const sssAdjShown = hasOffsite && a.sss_growth_adj != null && a.sss_offsite > 0;
+  let sssSub = 'Same store sales YoY (' + D.days_completed + ' days)';
+  if (sssAdjShown) {{
+    sssSub += '<br><span class="offsite-tag">Ex off-site*: ' + pct(a.sss_growth_adj)
+            + ' \u00b7 PY less ' + fmt(a.sss_offsite) + '</span>';
+  }}
+  let ytdSub = 'FY' + D.fiscal_year + ' P1\u2013P' + D.period + ' all stores';
+  if (ALLDATA.ytd_py_offsite > 0 && ALLDATA.ytd_growth_adj != null) {{
+    ytdSub += '<br><span class="offsite-tag">Ex off-site*: ' + pct(ALLDATA.ytd_growth_adj) + ' YoY</span>';
+  }}
+
   kpis.push(
     {{ label: 'Period Net Sales', value: fmt(a.net_sales), sub: 'Budget: ' + fmt(a.budget_sales_prorated) + ' (prorated)', change: a.budget_variance, changeLabel: 'vs Budget' }},
-    {{ label: 'YTD Net Sales', value: fmt(ALLDATA.ytd_net_sales), sub: 'FY' + D.fiscal_year + ' P1\u2013P' + D.period + ' all stores', change: ALLDATA.ytd_growth, changeLabel: 'YoY' }},
-    {{ label: 'SSS Growth', value: a.sss_growth != null ? (a.sss_growth >= 0 ? '+' : '') + a.sss_growth + '%' : 'N/A', sub: 'Same store sales YoY (' + D.days_completed + ' days)', change: null, highlight: a.sss_growth }},
+    {{ label: 'YTD Net Sales', value: fmt(ALLDATA.ytd_net_sales), sub: ytdSub, change: ALLDATA.ytd_growth, changeLabel: 'YoY' }},
+    {{ label: 'SSS Growth' + (sssAdjShown ? '*' : ''), value: a.sss_growth != null ? (a.sss_growth >= 0 ? '+' : '') + a.sss_growth + '%' : 'N/A', sub: sssSub, change: null, highlight: a.sss_growth }},
     {{ label: 'Labor %', value: fmtPct(a.labor_pct), sub: 'Bgt Crew Wages: ' + fmtPct(a.budget_crew_wages_pct), change: a.budget_crew_wages_pct > 0 ? -(a.labor_pct - a.budget_crew_wages_pct) : null, changeLabel: 'vs Budget' }},
     {{ label: 'Avg Check', value: fmt(a.avg_check), sub: a.checks.toLocaleString() + ' checks', change: null }},
     {{ label: 'Guest Count', value: a.guests.toLocaleString(), sub: 'Period to date', change: null }},
@@ -1163,15 +1355,27 @@ function renderDashboard(D) {{
     return dayNames[dt.getDay()] + ' ' + (dt.getMonth()+1) + '/' + dt.getDate();
   }});
 
+  const salesDatasets = [
+    {{ label: 'Current Year', data: dailyData.map(d => d.net_sales), backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 }},
+    {{ label: 'Prior Year', data: dailyData.map(d => d.py_net_sales), backgroundColor: '#64748b44', borderColor: '#64748b', borderWidth: 1 }},
+  ];
+  // Overlay the off-site-adjusted PY line so inflated days are obvious
+  if (dailyData.some(d => (d.py_offsite || 0) > 0)) {{
+    salesDatasets.push({{
+      type: 'line',
+      label: 'Prior Year (ex off-site)*',
+      data: dailyData.map(d => d.py_net_sales - (d.py_offsite || 0)),
+      borderColor: '#f59e0b', borderDash: [6, 4], borderWidth: 2,
+      pointRadius: 2, pointBackgroundColor: '#f59e0b', fill: false,
+    }});
+  }}
+
   if (salesChartInstance) salesChartInstance.destroy();
   salesChartInstance = new Chart(document.getElementById('salesChart'), {{
     type: 'bar',
     data: {{
       labels: labels,
-      datasets: [
-        {{ label: 'Current Year', data: dailyData.map(d => d.net_sales), backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 }},
-        {{ label: 'Prior Year', data: dailyData.map(d => d.py_net_sales), backgroundColor: '#64748b44', borderColor: '#64748b', borderWidth: 1 }},
-      ]
+      datasets: salesDatasets
     }},
     options: {{
       responsive: true,
@@ -1220,6 +1424,7 @@ function renderDashboard(D) {{
     <th class="right">vs Budget</th>
     <th class="right">Prior Year</th>
     <th class="right">SSS Growth</th>
+    ${{hasOffsite ? '<th class="right" style="color:#f59e0b">SSS ex Off-site*</th>' : ''}}
     <th class="right">Labor %</th>
     <th class="right">Bgt Crew %</th>
     <th class="right">Guests</th>
@@ -1232,14 +1437,22 @@ function renderDashboard(D) {{
     const sssHtml = s.sss_growth != null ? fmtChange(s.sss_growth) : '<span class="neutral">N/A</span>';
     const budgetVarHtml = s.budget_variance != null ? fmtChange(s.budget_variance) : '<span class="neutral">\u2014</span>';
     const laborCls = s.labor_pct > 35 ? 'negative' : s.labor_pct > 30 ? 'neutral' : 'positive';
+    // Prior-year cell flags any off-site dollars sitting in the base
+    const pyCellHtml = s.py_offsite > 0
+      ? fmt(s.py_net_sales) + '<span class="offsite-tag">incl. ' + fmt(s.py_offsite) + ' off-site</span>'
+      : fmt(s.py_net_sales);
+    const sssAdjCell = !hasOffsite ? ''
+      : '<td class="right">' + (s.py_offsite > 0 && s.sss_growth_adj != null
+          ? fmtChange(s.sss_growth_adj) : '<span class="neutral">\u2014</span>') + '</td>';
     tableHtml += `<tr>
       <td><strong>${{num}}</strong> ${{s.name}}</td>
       ${{showToday ? '<td class="right" style="color:#f59e0b">' + (s.today_net_sales > 0 ? fmt(s.today_net_sales) : '<span class="neutral">&mdash;</span>') + '</td><td class="right" style="color:#64748b">' + (s.today_py_net_sales > 0 ? fmt(s.today_py_net_sales) : '<span class="neutral">&mdash;</span>') + '</td>' : ''}}
       <td class="right">${{fmt(s.net_sales)}}</td>
       <td class="right" style="color:#94a3b8">${{fmt(s.budget_sales_prorated)}}</td>
       <td class="right">${{budgetVarHtml}}</td>
-      <td class="right" style="color:#94a3b8">${{fmt(s.py_net_sales)}}</td>
+      <td class="right" style="color:#94a3b8">${{pyCellHtml}}</td>
       <td class="right">${{sssHtml}}</td>
+      ${{sssAdjCell}}
       <td class="right"><span class="${{laborCls}}">${{fmtPct(s.labor_pct)}}</span></td>
       <td class="right" style="color:#94a3b8">${{fmtPct(s.budget_crew_wages_pct)}}</td>
       <td class="right">${{s.guests.toLocaleString()}}</td>
@@ -1249,14 +1462,21 @@ function renderDashboard(D) {{
 
   // Total row
   const aBudgetVarHtml = a.budget_variance != null ? fmtChange(a.budget_variance) : '<span class="neutral">\u2014</span>';
+  const aPyCellHtml = a.py_offsite > 0
+    ? fmt(a.py_net_sales) + '<span class="offsite-tag">incl. ' + fmt(a.py_offsite) + ' off-site</span>'
+    : fmt(a.py_net_sales);
+  const aSssAdjCell = !hasOffsite ? ''
+    : '<td class="right">' + (a.sss_growth_adj != null ? fmtChange(a.sss_growth_adj)
+        : '<span class="neutral">\u2014</span>') + '</td>';
   tableHtml += `<tr class="total-row">
     <td><strong>ALL STORES</strong></td>
     ${{showToday ? '<td class="right" style="color:#f59e0b">' + fmt(a.today_net_sales) + '</td><td class="right" style="color:#64748b">' + fmt(a.today_py_net_sales) + '</td>' : ''}}
     <td class="right">${{fmt(a.net_sales)}}</td>
     <td class="right" style="color:#94a3b8">${{fmt(a.budget_sales_prorated)}}</td>
     <td class="right">${{aBudgetVarHtml}}</td>
-    <td class="right" style="color:#94a3b8">${{fmt(a.py_net_sales)}}</td>
+    <td class="right" style="color:#94a3b8">${{aPyCellHtml}}</td>
     <td class="right">${{a.sss_growth != null ? fmtChange(a.sss_growth) : '<span class="neutral">N/A</span>'}}</td>
+    ${{aSssAdjCell}}
     <td class="right">${{fmtPct(a.labor_pct)}}</td>
     <td class="right" style="color:#94a3b8">${{fmtPct(a.budget_crew_wages_pct)}}</td>
     <td class="right">${{a.guests.toLocaleString()}}</td>
@@ -1264,6 +1484,37 @@ function renderDashboard(D) {{
   </tr>`;
   tableHtml += '</tbody>';
   storeTable.innerHTML = tableHtml;
+
+  // Off-site adjustment footnote
+  const offsiteNote = document.getElementById('offsiteNote');
+  const events = D.offsite_events || [];
+  if (events.length === 0) {{
+    offsiteNote.style.display = 'none';
+    offsiteNote.innerHTML = '';
+  }} else {{
+    const totalApplied = events.reduce((t, e) => t + e.applied, 0);
+    const items = events.map(e => {{
+      const range = e.start === e.end ? e.start : e.start + ' – ' + e.end;
+      const partial = e.days_applied < e.days_total
+        ? ' &mdash; ' + e.days_applied + ' of ' + e.days_total
+          + ' days inside the compared window (' + fmt(e.applied) + ')'
+        : '';
+      return '<li>' + e.store + ' ' + e.store_name + ' &middot; ' + range
+           + ' &middot; ' + fmt(e.amount) + partial + '</li>';
+    }}).join('');
+    offsiteNote.className = 'offsite-note';
+    offsiteNote.style.display = 'block';
+    offsiteNote.innerHTML =
+      '<strong>* Off-site sales adjustment.</strong> Prior-year figures include '
+      + fmt(totalApplied) + ' of off-site event sales that rang through the store POS '
+      + 'and have no current-year equivalent. The "ex off-site" columns remove them from '
+      + 'the prior-year base only &mdash; current-year sales are unchanged. '
+      + 'Reported SSS remains the official number.'
+      + '<ul>' + items + '</ul>'
+      + '<div style="margin-top:6px;font-size:12px;color:#64748b">'
+      + 'Lump sums given for a date range are spread evenly across the days in that range.'
+      + '</div>';
+  }}
 
   // Daily Detail Tabs
   const tabBar = document.getElementById('tabBar');
