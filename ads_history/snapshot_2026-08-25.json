@@ -1,0 +1,831 @@
+{
+ "fetched": "2026-08-25",
+ "has_real_revenue": true,
+ "current": {
+  "start": "2026-07-26",
+  "end": "2026-08-22",
+  "campaigns": [
+   {
+    "name": "PMax_Cube_Brookfield",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 731.24,
+    "clicks": 2753,
+    "impressions": 81542,
+    "conversions": 2204.5,
+    "conv_value": 3582.59,
+    "real_conversions": 26.1,
+    "real_conv_value": 885.6
+   },
+   {
+    "name": "PMax_Cube_Milwaukee",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 727.29,
+    "clicks": 2690,
+    "impressions": 111055,
+    "conversions": 1286.6,
+    "conv_value": 2310.08,
+    "real_conversions": 29.7,
+    "real_conv_value": 763.55
+   },
+   {
+    "name": "PMax_Cube_Hilldale_Madison",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 598.06,
+    "clicks": 2253,
+    "impressions": 78604,
+    "conversions": 1228.2,
+    "conv_value": 2445.8,
+    "real_conversions": 36.1,
+    "real_conv_value": 1001.98
+   },
+   {
+    "name": "PMax_Cube_Pewaukee",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 594.74,
+    "clicks": 1836,
+    "impressions": 63220,
+    "conversions": 1359.1,
+    "conv_value": 2215.85,
+    "real_conversions": 19.2,
+    "real_conv_value": 534.21
+   },
+   {
+    "name": "PMax_Cube_Sun Prairie",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 540.87,
+    "clicks": 2050,
+    "impressions": 66307,
+    "conversions": 1403.5,
+    "conv_value": 2576.01,
+    "real_conversions": 32.6,
+    "real_conv_value": 900.34
+   },
+   {
+    "name": "PMax_Cube_WhitefishBay",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 538.98,
+    "clicks": 2322,
+    "impressions": 61683,
+    "conversions": 1483.0,
+    "conv_value": 2659.26,
+    "real_conversions": 30.6,
+    "real_conv_value": 884.0
+   },
+   {
+    "name": "PMax_Cube_Middleton",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 462.32,
+    "clicks": 2151,
+    "impressions": 67573,
+    "conversions": 1348.5,
+    "conv_value": 2455.01,
+    "real_conversions": 40.8,
+    "real_conv_value": 874.29
+   },
+   {
+    "name": "PMax_Cube_Monona",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 431.96,
+    "clicks": 1881,
+    "impressions": 58342,
+    "conversions": 1022.7,
+    "conv_value": 1952.03,
+    "real_conversions": 25.3,
+    "real_conv_value": 743.63
+   },
+   {
+    "name": "PMax_Cube_Champaign",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 298.58,
+    "clicks": 1616,
+    "impressions": 65435,
+    "conversions": 863.0,
+    "conv_value": 1307.2,
+    "real_conversions": 11.6,
+    "real_conv_value": 281.34
+   },
+   {
+    "name": "PMax_Cube_StateStreet",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 298.03,
+    "clicks": 2101,
+    "impressions": 118888,
+    "conversions": 740.4,
+    "conv_value": 1282.15,
+    "real_conversions": 19.0,
+    "real_conv_value": 439.04
+   },
+   {
+    "name": "PMax_Cube_Top Locations",
+    "status": "PAUSED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 233.32,
+    "clicks": 320,
+    "impressions": 11976,
+    "conversions": 9.5,
+    "conv_value": 441.33,
+    "real_conversions": 9.5,
+    "real_conv_value": 441.33
+   }
+  ],
+  "totals": {
+   "cost": 5455.39,
+   "clicks": 21973,
+   "impressions": 784625,
+   "conversions": 12949.0,
+   "conv_value": 23227.31,
+   "roas": 4.26,
+   "real_conv_value": 7749.31,
+   "real_conversions": 280.5,
+   "true_roas": 1.42,
+   "cpa": 0.42,
+   "cpc": 0.25
+  },
+  "by_date": [
+   {
+    "date": "2026-07-26",
+    "cost": 302.56,
+    "clicks": 1097,
+    "conversions": 536.1,
+    "conv_value": 758.72
+   },
+   {
+    "date": "2026-07-27",
+    "cost": 247.97,
+    "clicks": 946,
+    "conversions": 527.4,
+    "conv_value": 992.32
+   },
+   {
+    "date": "2026-07-28",
+    "cost": 268.69,
+    "clicks": 879,
+    "conversions": 502.2,
+    "conv_value": 899.56
+   },
+   {
+    "date": "2026-07-29",
+    "cost": 180.33,
+    "clicks": 728,
+    "conversions": 388.8,
+    "conv_value": 985.42
+   },
+   {
+    "date": "2026-07-30",
+    "cost": 209.07,
+    "clicks": 706,
+    "conversions": 456.5,
+    "conv_value": 830.66
+   },
+   {
+    "date": "2026-07-31",
+    "cost": 197.87,
+    "clicks": 820,
+    "conversions": 343.4,
+    "conv_value": 562.24
+   },
+   {
+    "date": "2026-08-01",
+    "cost": 178.68,
+    "clicks": 861,
+    "conversions": 453.0,
+    "conv_value": 772.28
+   },
+   {
+    "date": "2026-08-02",
+    "cost": 221.05,
+    "clicks": 929,
+    "conversions": 467.3,
+    "conv_value": 834.57
+   },
+   {
+    "date": "2026-08-03",
+    "cost": 176.08,
+    "clicks": 812,
+    "conversions": 513.9,
+    "conv_value": 1115.19
+   },
+   {
+    "date": "2026-08-04",
+    "cost": 171.41,
+    "clicks": 690,
+    "conversions": 502.8,
+    "conv_value": 867.9
+   },
+   {
+    "date": "2026-08-05",
+    "cost": 182.45,
+    "clicks": 770,
+    "conversions": 492.2,
+    "conv_value": 782.72
+   },
+   {
+    "date": "2026-08-06",
+    "cost": 185.38,
+    "clicks": 777,
+    "conversions": 496.8,
+    "conv_value": 871.45
+   },
+   {
+    "date": "2026-08-07",
+    "cost": 198.07,
+    "clicks": 842,
+    "conversions": 526.8,
+    "conv_value": 980.62
+   },
+   {
+    "date": "2026-08-08",
+    "cost": 177.69,
+    "clicks": 894,
+    "conversions": 482.0,
+    "conv_value": 801.53
+   },
+   {
+    "date": "2026-08-09",
+    "cost": 189.96,
+    "clicks": 896,
+    "conversions": 491.6,
+    "conv_value": 870.21
+   },
+   {
+    "date": "2026-08-10",
+    "cost": 190.45,
+    "clicks": 781,
+    "conversions": 456.2,
+    "conv_value": 1059.03
+   },
+   {
+    "date": "2026-08-11",
+    "cost": 141.21,
+    "clicks": 588,
+    "conversions": 405.0,
+    "conv_value": 698.73
+   },
+   {
+    "date": "2026-08-12",
+    "cost": 175.64,
+    "clicks": 731,
+    "conversions": 460.0,
+    "conv_value": 930.27
+   },
+   {
+    "date": "2026-08-13",
+    "cost": 225.77,
+    "clicks": 823,
+    "conversions": 577.8,
+    "conv_value": 1124.06
+   },
+   {
+    "date": "2026-08-14",
+    "cost": 157.13,
+    "clicks": 748,
+    "conversions": 436.5,
+    "conv_value": 741.05
+   },
+   {
+    "date": "2026-08-15",
+    "cost": 215.91,
+    "clicks": 956,
+    "conversions": 526.7,
+    "conv_value": 893.04
+   },
+   {
+    "date": "2026-08-16",
+    "cost": 178.1,
+    "clicks": 817,
+    "conversions": 489.0,
+    "conv_value": 806.11
+   },
+   {
+    "date": "2026-08-17",
+    "cost": 174.1,
+    "clicks": 721,
+    "conversions": 471.5,
+    "conv_value": 634.49
+   },
+   {
+    "date": "2026-08-18",
+    "cost": 187.97,
+    "clicks": 621,
+    "conversions": 381.4,
+    "conv_value": 717.42
+   },
+   {
+    "date": "2026-08-19",
+    "cost": 175.28,
+    "clicks": 547,
+    "conversions": 369.9,
+    "conv_value": 721.18
+   },
+   {
+    "date": "2026-08-20",
+    "cost": 178.73,
+    "clicks": 582,
+    "conversions": 384.8,
+    "conv_value": 609.69
+   },
+   {
+    "date": "2026-08-21",
+    "cost": 175.44,
+    "clicks": 678,
+    "conversions": 385.5,
+    "conv_value": 594.68
+   },
+   {
+    "date": "2026-08-22",
+    "cost": 192.4,
+    "clicks": 733,
+    "conversions": 424.0,
+    "conv_value": 772.2
+   }
+  ]
+ },
+ "previous": {
+  "start": "2026-06-28",
+  "end": "2026-07-25",
+  "campaigns": [
+   {
+    "name": "PMax_Cube_Milwaukee",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 1097.9,
+    "clicks": 4110,
+    "impressions": 195139,
+    "conversions": 1830.4,
+    "conv_value": 3392.16,
+    "real_conversions": 42.7,
+    "real_conv_value": 1215.44
+   },
+   {
+    "name": "PMax_Cube_Brookfield",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 968.24,
+    "clicks": 3349,
+    "impressions": 109187,
+    "conversions": 2605.8,
+    "conv_value": 4267.11,
+    "real_conversions": 40.8,
+    "real_conv_value": 1082.86
+   },
+   {
+    "name": "PMax_Cube_Hilldale_Madison",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 939.71,
+    "clicks": 3219,
+    "impressions": 113555,
+    "conversions": 1871.2,
+    "conv_value": 3739.52,
+    "real_conversions": 50.0,
+    "real_conv_value": 1492.2
+   },
+   {
+    "name": "PMax_Cube_Pewaukee",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 822.97,
+    "clicks": 2458,
+    "impressions": 90453,
+    "conversions": 1743.2,
+    "conv_value": 3105.43,
+    "real_conversions": 36.4,
+    "real_conv_value": 1026.7
+   },
+   {
+    "name": "PMax_Cube_Monona",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 644.1,
+    "clicks": 2611,
+    "impressions": 87952,
+    "conversions": 1310.8,
+    "conv_value": 2571.58,
+    "real_conversions": 33.5,
+    "real_conv_value": 1036.25
+   },
+   {
+    "name": "PMax_Cube_WhitefishBay",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 562.17,
+    "clicks": 2427,
+    "impressions": 74859,
+    "conversions": 1394.2,
+    "conv_value": 2559.85,
+    "real_conversions": 34.4,
+    "real_conv_value": 929.5
+   },
+   {
+    "name": "PMax_Cube_Middleton",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 560.51,
+    "clicks": 2370,
+    "impressions": 84378,
+    "conversions": 1287.2,
+    "conv_value": 2243.62,
+    "real_conversions": 24.3,
+    "real_conv_value": 730.7
+   },
+   {
+    "name": "PMax_Cube_Sun Prairie",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 552.14,
+    "clicks": 2195,
+    "impressions": 78544,
+    "conversions": 1470.4,
+    "conv_value": 2430.7,
+    "real_conversions": 23.0,
+    "real_conv_value": 667.8
+   },
+   {
+    "name": "PMax_Cube_StateStreet",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 415.85,
+    "clicks": 2899,
+    "impressions": 179803,
+    "conversions": 935.2,
+    "conv_value": 1491.28,
+    "real_conversions": 13.5,
+    "real_conv_value": 388.96
+   },
+   {
+    "name": "PMax_Cube_Champaign",
+    "status": "ENABLED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 411.86,
+    "clicks": 2002,
+    "impressions": 74967,
+    "conversions": 1092.4,
+    "conv_value": 1514.52,
+    "real_conversions": 10.2,
+    "real_conv_value": 193.05
+   },
+   {
+    "name": "PMax_Cube_Top Locations",
+    "status": "PAUSED",
+    "channel": "PERFORMANCE_MAX",
+    "cost": 410.37,
+    "clicks": 991,
+    "impressions": 30887,
+    "conversions": 269.1,
+    "conv_value": 692.77,
+    "real_conversions": 12.9,
+    "real_conv_value": 383.45
+   }
+  ],
+  "totals": {
+   "cost": 7385.82,
+   "clicks": 28631,
+   "impressions": 1119724,
+   "conversions": 15809.9,
+   "conv_value": 28008.54,
+   "roas": 3.79,
+   "real_conv_value": 9146.91,
+   "real_conversions": 321.7,
+   "true_roas": 1.24,
+   "cpa": 0.47,
+   "cpc": 0.26
+  },
+  "by_date": [
+   {
+    "date": "2026-06-28",
+    "cost": 232.99,
+    "clicks": 1013,
+    "conversions": 618.1,
+    "conv_value": 886.34
+   },
+   {
+    "date": "2026-06-29",
+    "cost": 255.89,
+    "clicks": 970,
+    "conversions": 606.6,
+    "conv_value": 1274.23
+   },
+   {
+    "date": "2026-06-30",
+    "cost": 243.36,
+    "clicks": 904,
+    "conversions": 595.8,
+    "conv_value": 1469.53
+   },
+   {
+    "date": "2026-07-01",
+    "cost": 191.87,
+    "clicks": 812,
+    "conversions": 529.3,
+    "conv_value": 901.5
+   },
+   {
+    "date": "2026-07-02",
+    "cost": 287.21,
+    "clicks": 1128,
+    "conversions": 594.6,
+    "conv_value": 1020.55
+   },
+   {
+    "date": "2026-07-03",
+    "cost": 265.35,
+    "clicks": 1046,
+    "conversions": 560.1,
+    "conv_value": 1069.06
+   },
+   {
+    "date": "2026-07-04",
+    "cost": 195.03,
+    "clicks": 846,
+    "conversions": 292.5,
+    "conv_value": 363.85
+   },
+   {
+    "date": "2026-07-05",
+    "cost": 337.61,
+    "clicks": 1218,
+    "conversions": 687.5,
+    "conv_value": 1346.81
+   },
+   {
+    "date": "2026-07-06",
+    "cost": 229.23,
+    "clicks": 1003,
+    "conversions": 645.8,
+    "conv_value": 1036.21
+   },
+   {
+    "date": "2026-07-07",
+    "cost": 245.84,
+    "clicks": 1006,
+    "conversions": 566.7,
+    "conv_value": 1054.16
+   },
+   {
+    "date": "2026-07-08",
+    "cost": 272.14,
+    "clicks": 1092,
+    "conversions": 650.9,
+    "conv_value": 954.53
+   },
+   {
+    "date": "2026-07-09",
+    "cost": 261.18,
+    "clicks": 1022,
+    "conversions": 574.7,
+    "conv_value": 1153.27
+   },
+   {
+    "date": "2026-07-10",
+    "cost": 263.92,
+    "clicks": 1033,
+    "conversions": 585.6,
+    "conv_value": 1014.79
+   },
+   {
+    "date": "2026-07-11",
+    "cost": 208.21,
+    "clicks": 892,
+    "conversions": 412.4,
+    "conv_value": 673.35
+   },
+   {
+    "date": "2026-07-12",
+    "cost": 363.04,
+    "clicks": 1308,
+    "conversions": 691.2,
+    "conv_value": 911.58
+   },
+   {
+    "date": "2026-07-13",
+    "cost": 218.34,
+    "clicks": 910,
+    "conversions": 447.4,
+    "conv_value": 790.05
+   },
+   {
+    "date": "2026-07-14",
+    "cost": 286.14,
+    "clicks": 974,
+    "conversions": 590.0,
+    "conv_value": 872.97
+   },
+   {
+    "date": "2026-07-15",
+    "cost": 262.07,
+    "clicks": 977,
+    "conversions": 569.6,
+    "conv_value": 807.98
+   },
+   {
+    "date": "2026-07-16",
+    "cost": 289.83,
+    "clicks": 1058,
+    "conversions": 589.4,
+    "conv_value": 927.13
+   },
+   {
+    "date": "2026-07-17",
+    "cost": 311.92,
+    "clicks": 1294,
+    "conversions": 577.7,
+    "conv_value": 845.13
+   },
+   {
+    "date": "2026-07-18",
+    "cost": 284.84,
+    "clicks": 1137,
+    "conversions": 676.6,
+    "conv_value": 1166.64
+   },
+   {
+    "date": "2026-07-19",
+    "cost": 259.17,
+    "clicks": 1039,
+    "conversions": 584.0,
+    "conv_value": 1221.43
+   },
+   {
+    "date": "2026-07-20",
+    "cost": 278.34,
+    "clicks": 1059,
+    "conversions": 577.6,
+    "conv_value": 909.79
+   },
+   {
+    "date": "2026-07-21",
+    "cost": 276.31,
+    "clicks": 1011,
+    "conversions": 538.3,
+    "conv_value": 1040.93
+   },
+   {
+    "date": "2026-07-22",
+    "cost": 233.35,
+    "clicks": 887,
+    "conversions": 447.3,
+    "conv_value": 847.31
+   },
+   {
+    "date": "2026-07-23",
+    "cost": 312.26,
+    "clicks": 968,
+    "conversions": 575.4,
+    "conv_value": 922.68
+   },
+   {
+    "date": "2026-07-24",
+    "cost": 285.13,
+    "clicks": 1006,
+    "conversions": 558.2,
+    "conv_value": 1567.37
+   },
+   {
+    "date": "2026-07-25",
+    "cost": 235.25,
+    "clicks": 1018,
+    "conversions": 467.0,
+    "conv_value": 959.38
+   }
+  ]
+ },
+ "meta": {
+  "account": "act_35967094",
+  "current": {
+   "campaigns": [
+    {
+     "name": "brookfield sales 0726",
+     "spend": 336.49,
+     "impressions": 53934,
+     "clicks": 5193,
+     "link_clicks": 1444,
+     "lpv": 1218
+    },
+    {
+     "name": "Branding traffic 0626 Campaign",
+     "spend": 223.62,
+     "impressions": 27976,
+     "clicks": 1708,
+     "link_clicks": 1296,
+     "lpv": 762
+    },
+    {
+     "name": "Catering Traffic 0326 video",
+     "spend": 223.35,
+     "impressions": 32592,
+     "clicks": 867,
+     "link_clicks": 605,
+     "lpv": 468
+    },
+    {
+     "name": "Rewards video Traffic 0126",
+     "spend": 195.76,
+     "impressions": 29334,
+     "clicks": 1505,
+     "link_clicks": 1224,
+     "lpv": 743
+    },
+    {
+     "name": "falafel launch 0706",
+     "spend": 75.63,
+     "impressions": 14098,
+     "clicks": 317,
+     "link_clicks": 276,
+     "lpv": 258
+    },
+    {
+     "name": "UIUC Campus 0826",
+     "spend": 22.03,
+     "impressions": 3451,
+     "clicks": 127,
+     "link_clicks": 86,
+     "lpv": 81
+    },
+    {
+     "name": "UW Campus 0826",
+     "spend": 13.69,
+     "impressions": 1869,
+     "clicks": 98,
+     "link_clicks": 67,
+     "lpv": 58
+    }
+   ],
+   "totals": {
+    "spend": 1090.57,
+    "impressions": 163254,
+    "link_clicks": 4998,
+    "lpv": 3588,
+    "cost_per_lpv": 0.3
+   }
+  },
+  "previous": {
+   "campaigns": [
+    {
+     "name": "Branding traffic 0626 Campaign",
+     "spend": 163.36,
+     "impressions": 31053,
+     "clicks": 1018,
+     "link_clicks": 790,
+     "lpv": 607
+    },
+    {
+     "name": "Catering Traffic 0326 video",
+     "spend": 163.24,
+     "impressions": 22935,
+     "clicks": 578,
+     "link_clicks": 366,
+     "lpv": 274
+    },
+    {
+     "name": "Rewards video Traffic 0126",
+     "spend": 142.94,
+     "impressions": 22634,
+     "clicks": 988,
+     "link_clicks": 686,
+     "lpv": 509
+    },
+    {
+     "name": "falafel launch 0706",
+     "spend": 138.24,
+     "impressions": 23891,
+     "clicks": 491,
+     "link_clicks": 411,
+     "lpv": 380
+    },
+    {
+     "name": "Berry Good Summer Salad 0626 Campaign",
+     "spend": 32.34,
+     "impressions": 12845,
+     "clicks": 147,
+     "link_clicks": 112,
+     "lpv": 70
+    },
+    {
+     "name": "brookfield sales 0726",
+     "spend": 19.14,
+     "impressions": 2269,
+     "clicks": 157,
+     "link_clicks": 47,
+     "lpv": 45
+    }
+   ],
+   "totals": {
+    "spend": 659.26,
+    "impressions": 115627,
+    "link_clicks": 2412,
+    "lpv": 1885,
+    "cost_per_lpv": 0.35
+   }
+  }
+ }
+}
