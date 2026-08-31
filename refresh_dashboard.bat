@@ -9,13 +9,14 @@ echo.
 echo Emailing dashboard...
 "C:\Users\ascha\AppData\Local\Python\bin\python.exe" email_dashboard.py
 echo.
+echo Encrypting dashboards...
+"C:\Users\ascha\AppData\Local\Python\bin\python.exe" encrypt_dashboards.py
+echo.
 echo Publishing to GitHub Pages...
-copy /Y "C:\Users\ascha\OneDrive\Desktop\forage-data\daily_dashboard.html" "C:\Users\ascha\OneDrive\Desktop\forage-dashboards\daily_dashboard.html"
-cd /d "C:\Users\ascha\OneDrive\Desktop\forage-dashboards"
-git add daily_dashboard.html
-git commit -m "Update daily dashboard"
+git add dashboard.html labor_dashboard.html cogs_dashboard.html cogs_P3_FY2026.html daily_dashboard.html
+git commit -m "Update dashboards"
+git pull --rebase origin master
 git push
-cd /d "C:\Users\ascha\OneDrive\Desktop\forage-data"
 echo.
 echo Opening dashboard in browser...
 start "" "daily_dashboard.html"

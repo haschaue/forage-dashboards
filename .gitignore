@@ -3,6 +3,7 @@ toast_config.py
 r365_config.py
 gsc_credentials.json
 meta_config.py
+dashboard_password.txt
 
 # Office lock files
 .~lock.*

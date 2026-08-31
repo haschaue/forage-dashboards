@@ -9,6 +9,10 @@ cd /d "%~dp0"
 "C:\Users\ascha\AppData\Local\Python\bin\python.exe" labor_dashboard.py
 
 echo.
+echo Encrypting dashboards...
+"C:\Users\ascha\AppData\Local\Python\bin\python.exe" encrypt_dashboards.py
+
+echo.
 echo Opening dashboard in browser...
 start "" "labor_dashboard.html"
 pause

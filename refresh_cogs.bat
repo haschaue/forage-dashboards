@@ -14,6 +14,15 @@ if "%~1"=="" (
     py cogs_dashboard.py %1
 )
 echo.
+echo Encrypting dashboards...
+py encrypt_dashboards.py
+echo.
+echo Publishing to GitHub Pages...
+git add cogs_dashboard.html cogs_P*_FY*.html
+git commit -m "Update COGS dashboard"
+git pull --rebase origin master
+git push
+echo.
 echo Opening dashboard...
 start cogs_dashboard.html
 echo.
