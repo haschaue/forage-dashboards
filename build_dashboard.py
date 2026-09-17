@@ -515,3 +515,11 @@ with open(output_path, 'w', encoding='utf-8') as f:
 
 print(f'Dashboard written to {output_path}')
 print(f'File size: {os.path.getsize(output_path):,} bytes')
+
+# Board-facing version: same content, nav.js stripped so board members don't see links to other dashboards
+board_html = html.replace('<script src="nav.js"></script>\n', '', 1)
+board_path = os.path.join(folder, 'board_dashboard.html')
+with open(board_path, 'w', encoding='utf-8') as f:
+    f.write(board_html)
+print(f'Board dashboard written to {board_path}')
+print(f'File size: {os.path.getsize(board_path):,} bytes')
