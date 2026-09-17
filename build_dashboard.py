@@ -83,7 +83,7 @@ html = '''<!DOCTYPE html>
 </div>
 <div class="main">
   <div class="section-title">FY2026 YTD (P1-P8) vs FY2025 YTD (P1-P8) &mdash; All Stores</div>
-  <p class="note">Periods 1-5, 2026 compared to Periods 1-5, 2025</p>
+  <p class="note">P1-P8 2026 compared to P1-P8 2025</p>
   <div id="ytd26KpiRow" class="kpi-row six"></div>
   <div class="table-card"><table id="ytd26Table"></table></div>
   <div class="charts-grid" style="margin-top:32px">
