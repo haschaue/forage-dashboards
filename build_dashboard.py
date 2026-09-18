@@ -34,6 +34,10 @@ html = '''<!DOCTYPE html>
   .main{padding:24px 32px;max-width:1600px;margin:0 auto;}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
   .kpi-row.six{grid-template-columns:repeat(6,1fr);}
+  .mode-toggle{display:inline-flex;gap:0;margin:8px 0 4px;background:#22252f;border:1px solid var(--border);border-radius:8px;padding:3px;}
+  .mode-btn{background:transparent;border:none;color:var(--text-muted);font-size:12px;font-weight:600;padding:6px 16px;border-radius:6px;cursor:pointer;letter-spacing:.4px;}
+  .mode-btn:hover{color:var(--text);}
+  .mode-btn.active{background:var(--accent);color:#fff;}
   .kpi-card.featured{border:1.5px solid var(--green);background:linear-gradient(180deg, rgba(34,197,94,.06), var(--card));}
   .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
   .kpi-card:hover{border-color:var(--accent);}
@@ -82,8 +86,12 @@ html = '''<!DOCTYPE html>
   </div>
 </div>
 <div class="main">
-  <div class="section-title">FY2026 YTD (P1-P8) vs FY2025 YTD (P1-P8) &mdash; All Stores</div>
-  <p class="note">P1-P8 2026 compared to P1-P8 2025</p>
+  <div class="section-title" id="topSectionTitle">FY2026 YTD (P1-P8) vs FY2025 YTD (P1-P8) &mdash; All Stores</div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="ytd" onclick="setTopMode('ytd')">YTD</button>
+    <button class="mode-btn" data-mode="ttm" onclick="setTopMode('ttm')">TTM</button>
+  </div>
+  <p class="note" id="topSectionNote">P1-P8 2026 compared to P1-P8 2025</p>
   <div id="ytd26KpiRow" class="kpi-row six"></div>
   <div class="table-card"><table id="ytd26Table"></table></div>
   <div class="charts-grid" style="margin-top:32px">
@@ -120,6 +128,45 @@ const PERIODS = [1,2,3,4,5,6,7,8,9,10,11,12];
 
 let charts = {};
 let activeStore = "8001";
+let topMode = "ytd";
+
+// Returns {cur, prior} arrays of {p, yr} entries for the top-KPI section
+function windowPeriods(mode){
+  var lastP=FY26_PERIODS[FY26_PERIODS.length-1];
+  var cur=[],prior=[];
+  if(mode==="ytd"){
+    for(var p=1;p<=lastP;p++){cur.push({p:p,yr:2026});prior.push({p:p,yr:2025});}
+  } else {
+    for(var p=lastP+1;p<=12;p++){cur.push({p:p,yr:2025});prior.push({p:p,yr:2024});}
+    for(var p=1;p<=lastP;p++){cur.push({p:p,yr:2026});prior.push({p:p,yr:2025});}
+  }
+  return {cur:cur,prior:prior};
+}
+function sumOver(id, metric, win){
+  var t=0;
+  for(var i=0;i<win.length;i++){t+=gv(id+"_"+win[i].yr,metric,win[i].p);}
+  return t;
+}
+function setTopMode(mode){
+  topMode=mode;
+  var btns=document.querySelectorAll(".mode-btn");
+  for(var i=0;i<btns.length;i++){
+    if(btns[i].getAttribute("data-mode")===mode) btns[i].classList.add("active");
+    else btns[i].classList.remove("active");
+  }
+  var lastP=FY26_PERIODS[FY26_PERIODS.length-1];
+  var t=document.getElementById("topSectionTitle");
+  var n=document.getElementById("topSectionNote");
+  if(mode==="ytd"){
+    t.innerHTML="FY2026 YTD (P1-P"+lastP+") vs FY2025 YTD (P1-P"+lastP+") — All Stores";
+    n.innerHTML="P1-P"+lastP+" 2026 compared to P1-P"+lastP+" 2025";
+  } else {
+    t.innerHTML="Trailing Twelve Months (P"+(lastP+1)+" '25 – P"+lastP+" '26) vs Prior TTM — All Stores";
+    n.innerHTML="Last 12 periods compared to the prior 12 periods";
+  }
+  renderYtd26KPIs();
+  renderYtd26Table();
+}
 
 function gv(key,metric,p){if(!DATA[key]||!DATA[key][metric])return 0;return DATA[key][metric][String(p)]||0;}
 function fmt(v){return "$"+Math.round(v).toLocaleString();}
@@ -418,61 +465,66 @@ function renderNetSalesTable(){
 
 function renderYtd26KPIs(){
   var el=document.getElementById("ytd26KpiRow");
-  var ns26=0,ns25=0,cg26=0,cg25=0,lb26=0,lb25=0,oc26=0,oc25=0,eb26=0,eb25=0;
-  // SSS = stores with non-zero Net Sales in both years across the YTD periods
-  var sssNs26=0,sssNs25=0,sssCount=0,sssStores=[];
+  var mode=topMode;
+  var win=windowPeriods(mode);
+  var lastP=FY26_PERIODS[FY26_PERIODS.length-1];
+  var nsCur=0,nsPri=0,cgCur=0,cgPri=0,lbCur=0,lbPri=0,ocCur=0,ocPri=0,ebCur=0,ebPri=0;
+  // SSS = stores with non-zero Net Sales in both current and prior windows
+  var sssCur=0,sssPri=0,sssCount=0;
   for(var i=0;i<STORE_IDS.length;i++){
     var id=STORE_IDS[i];
-    var sNs26=0,sNs25=0;
-    for(var p=0;p<FY26_PERIODS.length;p++){
-      var pp=FY26_PERIODS[p];
-      ns26+=gv(id+"_2026","Net Sales",pp);ns25+=gv(id+"_2025","Net Sales",pp);
-      cg26+=gv(id+"_2026","COGS",pp);cg25+=gv(id+"_2025","COGS",pp);
-      lb26+=gv(id+"_2026","Labor",pp);lb25+=gv(id+"_2025","Labor",pp);
-      oc26+=gv(id+"_2026","Occupancy",pp);oc25+=gv(id+"_2025","Occupancy",pp);
-      eb26+=gv(id+"_2026","EBITDA",pp);eb25+=gv(id+"_2025","EBITDA",pp);
-      sNs26+=gv(id+"_2026","Net Sales",pp);sNs25+=gv(id+"_2025","Net Sales",pp);
-    }
-    if(sNs26>0 && sNs25>0){sssNs26+=sNs26;sssNs25+=sNs25;sssCount++;sssStores.push(id);}
+    var sCur=sumOver(id,"Net Sales",win.cur);
+    var sPri=sumOver(id,"Net Sales",win.prior);
+    nsCur+=sCur; nsPri+=sPri;
+    cgCur+=sumOver(id,"COGS",win.cur); cgPri+=sumOver(id,"COGS",win.prior);
+    lbCur+=sumOver(id,"Labor",win.cur); lbPri+=sumOver(id,"Labor",win.prior);
+    ocCur+=sumOver(id,"Occupancy",win.cur); ocPri+=sumOver(id,"Occupancy",win.prior);
+    ebCur+=sumOver(id,"EBITDA",win.cur); ebPri+=sumOver(id,"EBITDA",win.prior);
+    if(sCur>0 && sPri>0){sssCur+=sCur;sssPri+=sPri;sssCount++;}
   }
-  var sssPct=sssNs25?(sssNs26-sssNs25)/sssNs25:0;
-  var sc=ns25?(ns26-ns25)/ns25:0;
-  var lp26=ns26?lb26/ns26:0,lp25=ns25?lb25/ns25:0;
-  var cp26=ns26?cg26/ns26:0,cp25=ns25?cg25/ns25:0;
-  var op26=ns26?oc26/ns26:0,op25=ns25?oc25/ns25:0;
-  var ep26=ns26?eb26/ns26:0,ep25=ns25?eb25/ns25:0;
-  var lastP=FY26_PERIODS[FY26_PERIODS.length-1];
+  var sssPct=sssPri?(sssCur-sssPri)/sssPri:0;
+  var sc=nsPri?(nsCur-nsPri)/nsPri:0;
+  var lpCur=nsCur?lbCur/nsCur:0, lpPri=nsPri?lbPri/nsPri:0;
+  var cpCur=nsCur?cgCur/nsCur:0, cpPri=nsPri?cgPri/nsPri:0;
+  var opCur=nsCur?ocCur/nsCur:0, opPri=nsPri?ocPri/nsPri:0;
+  var epCur=nsCur?ebCur/nsCur:0, epPri=nsPri?ebPri/nsPri:0;
+  var lbl=(mode==="ytd") ? "YTD" : "TTM";
+  var priLbl=(mode==="ytd") ? "YTD 2025" : "Prior TTM";
+  var rng=(mode==="ytd") ? "P1-P"+lastP : "P"+(lastP+1)+" '25 - P"+lastP+" '26";
   el.innerHTML=
-    '<div class="kpi-card featured"><div class="label">YTD Same Store Sales</div><div class="value '+(sssPct>=0?"up":"down")+'">'+fmtChg(sssPct)+'</div>'+
-    '<div class="change '+(sssPct>=0?"up up-bg":"down down-bg")+'">P1-P'+lastP+' &middot; '+sssCount+' stores</div>'+
-    '<div class="sub">26: '+fmt(sssNs26)+' &middot; 25: '+fmt(sssNs25)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">YTD 2026 Net Sales</div><div class="value">'+fmt(ns26)+'</div>'+
-    '<div class="change '+(sc>=0?"up up-bg":"down down-bg")+'">'+fmtChg(sc)+' vs YTD 2025</div>'+
-    '<div class="sub">YTD 2025: '+fmt(ns25)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">YTD Labor %</div><div class="value">'+fmtPct(lp26)+'</div>'+
-    '<div class="change '+(lp26<=lp25?"up up-bg":"down down-bg")+'">'+(lp26<=lp25?"Improved":"Higher")+' vs '+fmtPct(lp25)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">YTD COGS %</div><div class="value">'+fmtPct(cp26)+'</div>'+
-    '<div class="change '+(cp26<=cp25?"up up-bg":"down down-bg")+'">'+(cp26<=cp25?"Improved":"Higher")+' vs '+fmtPct(cp25)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">YTD Occupancy %</div><div class="value">'+fmtPct(op26)+'</div>'+
-    '<div class="change '+(op26<=op25?"up up-bg":"down down-bg")+'">'+(op26<=op25?"Improved":"Higher")+' vs '+fmtPct(op25)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">YTD EBITDA %</div><div class="value">'+fmtPct(ep26)+'</div>'+
-    '<div class="change '+(ep26>=ep25?"up up-bg":"down down-bg")+'">'+fmtChg(ep26-ep25)+' pts vs YTD 2025</div>'+
-    '<div class="sub">EBITDA $: '+fmt(eb26)+'</div></div>';
+    '<div class="kpi-card featured"><div class="label">'+lbl+' Same Store Sales</div><div class="value '+(sssPct>=0?"up":"down")+'">'+fmtChg(sssPct)+'</div>'+
+    '<div class="change '+(sssPct>=0?"up up-bg":"down down-bg")+'">'+rng+' &middot; '+sssCount+' stores</div>'+
+    '<div class="sub">Cur: '+fmt(sssCur)+' &middot; Prior: '+fmt(sssPri)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' Net Sales</div><div class="value">'+fmt(nsCur)+'</div>'+
+    '<div class="change '+(sc>=0?"up up-bg":"down down-bg")+'">'+fmtChg(sc)+' vs '+priLbl+'</div>'+
+    '<div class="sub">'+priLbl+': '+fmt(nsPri)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' Labor %</div><div class="value">'+fmtPct(lpCur)+'</div>'+
+    '<div class="change '+(lpCur<=lpPri?"up up-bg":"down down-bg")+'">'+(lpCur<=lpPri?"Improved":"Higher")+' vs '+fmtPct(lpPri)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' COGS %</div><div class="value">'+fmtPct(cpCur)+'</div>'+
+    '<div class="change '+(cpCur<=cpPri?"up up-bg":"down down-bg")+'">'+(cpCur<=cpPri?"Improved":"Higher")+' vs '+fmtPct(cpPri)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' Occupancy %</div><div class="value">'+fmtPct(opCur)+'</div>'+
+    '<div class="change '+(opCur<=opPri?"up up-bg":"down down-bg")+'">'+(opCur<=opPri?"Improved":"Higher")+' vs '+fmtPct(opPri)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' EBITDA %</div><div class="value">'+fmtPct(epCur)+'</div>'+
+    '<div class="change '+(epCur>=epPri?"up up-bg":"down down-bg")+'">'+fmtChg(epCur-epPri)+' pts vs '+priLbl+'</div>'+
+    '<div class="sub">EBITDA $: '+fmt(ebCur)+'</div></div>';
 }
 
 function renderYtd26Table(){
   var t=document.getElementById("ytd26Table");
-  var h='<thead><tr><th>Store</th><th>Net Sales 2026</th><th>Net Sales 2025</th><th>% Chg</th><th>Labor %</th><th>COGS %</th><th>Occup %</th><th>EBITDA %</th><th>EBITDA $</th></tr></thead><tbody>';
+  var mode=topMode;
+  var win=windowPeriods(mode);
+  var curLbl=(mode==="ytd") ? "2026" : "TTM";
+  var priLbl=(mode==="ytd") ? "2025" : "Prior TTM";
+  var h='<thead><tr><th>Store</th><th>Net Sales '+curLbl+'</th><th>Net Sales '+priLbl+'</th><th>% Chg</th><th>Labor %</th><th>COGS %</th><th>Occup %</th><th>EBITDA %</th><th>EBITDA $</th></tr></thead><tbody>';
   var tns26=0,tns25=0,tcg=0,tlb=0,toc=0,teb=0;
   for(var i=0;i<STORE_IDS.length;i++){
     var id=STORE_IDS[i];
-    var sns26=0,sns25=0,scg=0,slb=0,soc=0,seb=0;
-    for(var p=0;p<FY26_PERIODS.length;p++){
-      var pp=FY26_PERIODS[p];
-      sns26+=gv(id+"_2026","Net Sales",pp);sns25+=gv(id+"_2025","Net Sales",pp);
-      scg+=gv(id+"_2026","COGS",pp);slb+=gv(id+"_2026","Labor",pp);
-      soc+=gv(id+"_2026","Occupancy",pp);seb+=gv(id+"_2026","EBITDA",pp);
-    }
+    var sns26=sumOver(id,"Net Sales",win.cur);
+    var sns25=sumOver(id,"Net Sales",win.prior);
+    var scg=sumOver(id,"COGS",win.cur);
+    var slb=sumOver(id,"Labor",win.cur);
+    var soc=sumOver(id,"Occupancy",win.cur);
+    var seb=sumOver(id,"EBITDA",win.cur);
     tns26+=sns26;tns25+=sns25;tcg+=scg;tlb+=slb;toc+=soc;teb+=seb;
     var pc=sns25?(sns26-sns25)/sns25:0;
     h+='<tr><td>'+id+' - '+STORE_NAMES[id]+'</td>'+
