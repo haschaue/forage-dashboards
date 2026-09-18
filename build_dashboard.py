@@ -34,6 +34,12 @@ html = '''<!DOCTYPE html>
   .main{padding:24px 32px;max-width:1600px;margin:0 auto;}
   .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
   .kpi-row.six{grid-template-columns:repeat(6,1fr);}
+  .kpi-row.seven{grid-template-columns:repeat(7,1fr);gap:10px;}
+  .kpi-row.seven .kpi-card{padding:12px 12px;}
+  .kpi-row.seven .kpi-card .value{font-size:20px;}
+  .kpi-row.seven .kpi-card .label{font-size:9.5px;letter-spacing:.5px;margin-bottom:5px;}
+  .kpi-row.seven .kpi-card .change{font-size:10px;padding:2px 6px;}
+  .kpi-row.seven .kpi-card .sub{font-size:10px;}
   .mode-toggle{display:inline-flex;gap:0;margin:8px 0 4px;background:#22252f;border:1px solid var(--border);border-radius:8px;padding:3px;}
   .mode-btn{background:transparent;border:none;color:var(--text-muted);font-size:12px;font-weight:600;padding:6px 16px;border-radius:6px;cursor:pointer;letter-spacing:.4px;}
   .mode-btn:hover{color:var(--text);}
@@ -92,7 +98,7 @@ html = '''<!DOCTYPE html>
     <button class="mode-btn" data-mode="ttm" onclick="setTopMode('ttm')">TTM</button>
   </div>
   <p class="note" id="topSectionNote">P1-P8 2026 compared to P1-P8 2025</p>
-  <div id="ytd26KpiRow" class="kpi-row six"></div>
+  <div id="ytd26KpiRow" class="kpi-row seven"></div>
   <div class="table-card"><table id="ytd26Table"></table></div>
   <div class="charts-grid" style="margin-top:32px">
     <div class="chart-card full"><h3>Net Sales by Period &mdash; All Stores &bull; 2026 P1-P8</h3><canvas id="sssChart" height="70"></canvas></div>
@@ -482,6 +488,25 @@ function renderYtd26KPIs(){
     ebCur+=sumOver(id,"EBITDA",win.cur); ebPri+=sumOver(id,"EBITDA",win.prior);
     if(sCur>0 && sPri>0){sssCur+=sCur;sssPri+=sPri;sssCount++;}
   }
+  // Consolidated EBITDA = Restaurant Total EBITDA + Overhead EBITDA (overhead already signed negative).
+  // Pull directly from Consolidated_YYYY.EBITDA when populated; otherwise fall back to Restaurant EBITDA + Overhead EBITDA.
+  function consEB(w){
+    var total=0;
+    for(var i=0;i<w.length;i++){
+      var yr=w[i].yr,p=w[i].p;
+      var v=gv("Consolidated_"+yr,"EBITDA",p);
+      if(v===0){
+        // fallback: rebuild from restaurant + overhead
+        var rest=0;
+        for(var j=0;j<STORE_IDS.length;j++){rest+=gv(STORE_IDS[j]+"_"+yr,"EBITDA",p);}
+        v=rest+gv("Overhead_"+yr,"EBITDA",p);
+      }
+      total+=v;
+    }
+    return total;
+  }
+  var conCur=consEB(win.cur), conPri=consEB(win.prior);
+  var conPctCur=nsCur?conCur/nsCur:0, conPctPri=nsPri?conPri/nsPri:0;
   var sssPct=sssPri?(sssCur-sssPri)/sssPri:0;
   var sc=nsPri?(nsCur-nsPri)/nsPri:0;
   var lpCur=nsCur?lbCur/nsCur:0, lpPri=nsPri?lbPri/nsPri:0;
@@ -506,7 +531,10 @@ function renderYtd26KPIs(){
     '<div class="change '+(opCur<=opPri?"up up-bg":"down down-bg")+'">'+(opCur<=opPri?"Improved":"Higher")+' vs '+fmtPct(opPri)+'</div></div>'+
     '<div class="kpi-card"><div class="label">'+lbl+' Restaurant Level EBITDA %</div><div class="value">'+fmtPct(epCur)+'</div>'+
     '<div class="change '+(epCur>=epPri?"up up-bg":"down down-bg")+'">'+fmtChg(epCur-epPri)+' pts vs '+priLbl+'</div>'+
-    '<div class="sub">Restaurant Level EBITDA $: '+fmt(ebCur)+'</div></div>';
+    '<div class="sub">Restaurant Level EBITDA $: '+fmt(ebCur)+'</div></div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' Consolidated EBITDA %</div><div class="value '+(conCur>=0?"up":"down")+'">'+fmtPct(conPctCur)+'</div>'+
+    '<div class="change '+(conPctCur>=conPctPri?"up up-bg":"down down-bg")+'">'+fmtChg(conPctCur-conPctPri)+' pts vs '+priLbl+'</div>'+
+    '<div class="sub">Consolidated EBITDA $: '+fmt(conCur)+'</div></div>';
 }
 
 function renderYtd26Table(){
