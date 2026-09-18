@@ -504,9 +504,9 @@ function renderYtd26KPIs(){
     '<div class="change '+(cpCur<=cpPri?"up up-bg":"down down-bg")+'">'+(cpCur<=cpPri?"Improved":"Higher")+' vs '+fmtPct(cpPri)+'</div></div>'+
     '<div class="kpi-card"><div class="label">'+lbl+' Occupancy %</div><div class="value">'+fmtPct(opCur)+'</div>'+
     '<div class="change '+(opCur<=opPri?"up up-bg":"down down-bg")+'">'+(opCur<=opPri?"Improved":"Higher")+' vs '+fmtPct(opPri)+'</div></div>'+
-    '<div class="kpi-card"><div class="label">'+lbl+' EBITDA %</div><div class="value">'+fmtPct(epCur)+'</div>'+
+    '<div class="kpi-card"><div class="label">'+lbl+' Restaurant Level EBITDA %</div><div class="value">'+fmtPct(epCur)+'</div>'+
     '<div class="change '+(epCur>=epPri?"up up-bg":"down down-bg")+'">'+fmtChg(epCur-epPri)+' pts vs '+priLbl+'</div>'+
-    '<div class="sub">EBITDA $: '+fmt(ebCur)+'</div></div>';
+    '<div class="sub">Restaurant Level EBITDA $: '+fmt(ebCur)+'</div></div>';
 }
 
 function renderYtd26Table(){
