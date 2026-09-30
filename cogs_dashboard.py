@@ -323,14 +323,28 @@ def pull_transactions_for_period(period_start, period_end):
     return all_transactions
 
 
-def pull_transaction_details(transaction_ids):
+def pull_transaction_details(transaction_ids, batch_size=15):
     """Pull TransactionDetail rows for given transaction IDs.
-    We pull all details and filter in memory since the API doesn't support
-    filtering by transactionId directly.
+
+    Batches server-side using $filter (transactionId eq X or ...) rather than
+    fetching the entire TransactionDetail table — the /TransactionDetail
+    endpoint caps at ~27K rows and would silently drop older details for long
+    periods, understating purchases in the earliest weeks.
     """
-    all_details = r365_fetch_all(R365_BASE + "/TransactionDetail")
-    txn_id_set = set(transaction_ids)
-    return [td for td in all_details if td.get("transactionId", "") in txn_id_set]
+    ids = list(set(transaction_ids))
+    if not ids:
+        return []
+    all_details = []
+    for i in range(0, len(ids), batch_size):
+        batch = ids[i:i + batch_size]
+        filter_expr = " or ".join(f"transactionId eq {tid}" for tid in batch)
+        url = f"{R365_BASE}/TransactionDetail?$top=5000&$filter=({filter_expr})"
+        try:
+            data = r365_fetch(url)
+            all_details.extend(data.get("value", []))
+        except Exception as e:
+            print(f"      TransactionDetail batch {i}-{i+len(batch)} error: {e}")
+    return all_details
 
 
 def extract_vendor_name(txn_name):
