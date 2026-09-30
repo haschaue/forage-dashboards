@@ -700,6 +700,26 @@ def main():
         try:
             with open(prior_path, "r", encoding="utf-8") as _f:
                 _prior_html = _f.read()
+            # If the prior period is encrypted, decrypt it using the dashboard password
+            if "STATICRYPT-ENCRYPTED" in _prior_html[:2048]:
+                _pw_path = os.path.join(OUTDIR, "dashboard_password.txt")
+                if os.path.exists(_pw_path):
+                    with open(_pw_path, "r", encoding="utf-8") as _pf:
+                        _pw = _pf.read().strip()
+                    _pm = re.search(r"const PAYLOAD = (\{.*?\});", _prior_html)
+                    if _pm and _pw:
+                        import base64 as _b64
+                        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as _KDF
+                        from cryptography.hazmat.primitives import hashes as _hashes
+                        from cryptography.hazmat.primitives.ciphers.aead import AESGCM as _AESGCM
+                        _payload = json.loads(_pm.group(1))
+                        _salt = _b64.b64decode(_payload["salt"])
+                        _iv = _b64.b64decode(_payload["iv"])
+                        _ct = _b64.b64decode(_payload["ciphertext"])
+                        _kdf = _KDF(algorithm=_hashes.SHA256(), length=32,
+                                    salt=_salt, iterations=_payload["iterations"])
+                        _key = _kdf.derive(_pw.encode("utf-8"))
+                        _prior_html = _AESGCM(_key).decrypt(_iv, _ct, None).decode("utf-8")
             _m = re.search(r"const D = (\{.*?\});\n", _prior_html)
             if _m:
                 _prior = json.loads(_m.group(1))
