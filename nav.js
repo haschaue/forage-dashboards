@@ -9,6 +9,8 @@
     { href: "labor_dashboard.html",      label: "Labor",       match: ["labor_dashboard.html"] },
     { href: "dashboard.html",            label: "P&L",         match: ["dashboard.html"] },
     { href: "product_mix_analysis.html", label: "Product Mix", match: ["product_mix"] },
+    { href: "menu_cost_dashboard.html", label: "Menu Cost",   match: ["menu_cost_dashboard.html"] },
+    { href: "schedule.html",             label: "Scheduling",  match: ["schedule.html"] },
     { href: "seo_dashboard.html",        label: "SEO",         match: ["seo_dashboard.html"] },
     { href: "ads_dashboard.html",        label: "Paid Ads",    match: ["ads_dashboard.html"] },
     { href: "combined_dashboard.html",   label: "By Location", match: ["combined_dashboard.html"] }
