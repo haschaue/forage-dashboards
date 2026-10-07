@@ -99,6 +99,7 @@ DEFAULT_PROTEIN = {
     "Chicken Bacon Caesar Wrap": "ADD ON- ROASTED PULLED CHICKEN",
     "Santa Fe Wrap": "ADD ON- DICED CHICKEN THIGH",
     "Southwest Ranch": "ADD ON- DICED CHICKEN THIGH",
+    "Chicken Chopped Salad": "ADD ON- DICED CHICKEN THIGH",
 }
 
 # Protein add-ons tracked separately for pricing analysis
